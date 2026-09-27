@@ -1,5 +1,9 @@
 module activity-bot
 
+replace (
+	github.com/gotd/botapi v0.2.1-0.20260729151941-c0ef8fa85832 => github.com/yoworu/botapi v0.0.0-20260927102428-a424efb7344f
+)
+
 go 1.26.0
 
 require (
