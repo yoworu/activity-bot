@@ -28,11 +28,7 @@ INSERT INTO role_categories (fandom_id,
 VALUES ($1, $2) ON CONFLICT (fandom_id, name)
     DO
 UPDATE SET name = EXCLUDED.name
-    RETURNING
-    id,
-    fandom_id,
-    name,
-    created_at;
+    RETURNING *;
 
 
 -- name: CreateRole :one

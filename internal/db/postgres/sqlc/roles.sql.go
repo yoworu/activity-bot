@@ -74,11 +74,7 @@ INSERT INTO role_categories (fandom_id,
 VALUES ($1, $2) ON CONFLICT (fandom_id, name)
     DO
 UPDATE SET name = EXCLUDED.name
-    RETURNING
-    id,
-    fandom_id,
-    name,
-    created_at
+    RETURNING id, fandom_id, name, created_at, position
 `
 
 type CreateRoleCategoryParams struct {
@@ -86,21 +82,15 @@ type CreateRoleCategoryParams struct {
 	Name     string `db:"name" json:"name"`
 }
 
-type CreateRoleCategoryRow struct {
-	ID        int64              `db:"id" json:"id"`
-	FandomID  int64              `db:"fandom_id" json:"fandomId"`
-	Name      string             `db:"name" json:"name"`
-	CreatedAt pgtype.Timestamptz `db:"created_at" json:"createdAt"`
-}
-
-func (q *Queries) CreateRoleCategory(ctx context.Context, arg CreateRoleCategoryParams) (CreateRoleCategoryRow, error) {
+func (q *Queries) CreateRoleCategory(ctx context.Context, arg CreateRoleCategoryParams) (RoleCategory, error) {
 	row := q.db.QueryRow(ctx, createRoleCategory, arg.FandomID, arg.Name)
-	var i CreateRoleCategoryRow
+	var i RoleCategory
 	err := row.Scan(
 		&i.ID,
 		&i.FandomID,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Position,
 	)
 	return i, err
 }
