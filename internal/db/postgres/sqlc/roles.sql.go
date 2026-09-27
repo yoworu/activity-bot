@@ -87,9 +87,16 @@ type CreateRoleCategoryParams struct {
 	Name     string `db:"name" json:"name"`
 }
 
-func (q *Queries) CreateRoleCategory(ctx context.Context, arg CreateRoleCategoryParams) (RoleCategory, error) {
+type CreateRoleCategoryRow struct {
+	ID        int64              `db:"id" json:"id"`
+	FandomID  int64              `db:"fandom_id" json:"fandomId"`
+	Name      string             `db:"name" json:"name"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"createdAt"`
+}
+
+func (q *Queries) CreateRoleCategory(ctx context.Context, arg CreateRoleCategoryParams) (CreateRoleCategoryRow, error) {
 	row := q.db.QueryRow(ctx, createRoleCategory, arg.FandomID, arg.Name)
-	var i RoleCategory
+	var i CreateRoleCategoryRow
 	err := row.Scan(
 		&i.ID,
 		&i.FandomID,
@@ -197,7 +204,7 @@ FROM fandoms f
                    ON ra.role_id = r.id
 WHERE f.chat_id = $1
   AND f.name = $2
-ORDER BY rc.created_at,
+ORDER BY rc.position,
          r.name,
          ra.name
 `
@@ -400,9 +407,16 @@ type GetRoleCategoryParams struct {
 	Name     string `db:"name" json:"name"`
 }
 
-func (q *Queries) GetRoleCategory(ctx context.Context, arg GetRoleCategoryParams) (RoleCategory, error) {
+type GetRoleCategoryRow struct {
+	ID        int64              `db:"id" json:"id"`
+	FandomID  int64              `db:"fandom_id" json:"fandomId"`
+	Name      string             `db:"name" json:"name"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"createdAt"`
+}
+
+func (q *Queries) GetRoleCategory(ctx context.Context, arg GetRoleCategoryParams) (GetRoleCategoryRow, error) {
 	row := q.db.QueryRow(ctx, getRoleCategory, arg.FandomID, arg.Name)
-	var i RoleCategory
+	var i GetRoleCategoryRow
 	err := row.Scan(
 		&i.ID,
 		&i.FandomID,
@@ -447,15 +461,22 @@ WHERE fandom_id = $1
 ORDER BY name
 `
 
-func (q *Queries) ListRoleCategories(ctx context.Context, fandomID int64) ([]RoleCategory, error) {
+type ListRoleCategoriesRow struct {
+	ID        int64              `db:"id" json:"id"`
+	FandomID  int64              `db:"fandom_id" json:"fandomId"`
+	Name      string             `db:"name" json:"name"`
+	CreatedAt pgtype.Timestamptz `db:"created_at" json:"createdAt"`
+}
+
+func (q *Queries) ListRoleCategories(ctx context.Context, fandomID int64) ([]ListRoleCategoriesRow, error) {
 	rows, err := q.db.Query(ctx, listRoleCategories, fandomID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []RoleCategory{}
+	items := []ListRoleCategoriesRow{}
 	for rows.Next() {
-		var i RoleCategory
+		var i ListRoleCategoriesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.FandomID,
@@ -475,7 +496,7 @@ func (q *Queries) ListRoleCategories(ctx context.Context, fandomID int64) ([]Rol
 const listRoleReservations = `-- name: ListRoleReservations :many
 SELECT rr.id, rr.chat_id, rr.role_id, rr.created_at, rr.user_id,
        r.id, r.category_id, r.name, r.emoji, r.created_at,
-       rc.id, rc.fandom_id, rc.name, rc.created_at,
+       rc.id, rc.fandom_id, rc.name, rc.created_at, rc.position,
        f.id, f.chat_id, f.name
 FROM role_reservations rr
          JOIN roles r ON r.id = rr.role_id
@@ -516,6 +537,7 @@ func (q *Queries) ListRoleReservations(ctx context.Context, chatID int64) ([]Lis
 			&i.RoleCategory.FandomID,
 			&i.RoleCategory.Name,
 			&i.RoleCategory.CreatedAt,
+			&i.RoleCategory.Position,
 			&i.Fandom.ID,
 			&i.Fandom.ChatID,
 			&i.Fandom.Name,

@@ -328,6 +328,7 @@ type RoleCategory struct {
 	FandomID  int64              `db:"fandom_id" json:"fandomId"`
 	Name      string             `db:"name" json:"name"`
 	CreatedAt pgtype.Timestamptz `db:"created_at" json:"createdAt"`
+	Position  int32              `db:"position" json:"position"`
 }
 
 type RoleReservation struct {
