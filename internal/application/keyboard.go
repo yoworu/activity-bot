@@ -38,7 +38,7 @@ func regionKeyboard(categories []roles.Category) *botapi.InlineKeyboardMarkup {
 		buttons = append(buttons, data)
 	}
 
-	return keyboardRows(buttons, 1)
+	return keyboardRows(buttons, 2)
 }
 
 func roleKeyboard(available []roles.Role) *botapi.InlineKeyboardMarkup {
