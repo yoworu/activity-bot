@@ -2,9 +2,11 @@ package info
 
 import (
 	"activity-bot/internal/chatmember"
+	"bytes"
 	"fmt"
 	"sort"
 	"strings"
+	"text/template"
 )
 
 type BirthdayMember struct {
@@ -40,8 +42,36 @@ var birthdaySeasons = [...]struct {
 	},
 }
 
+type BirthdayRenderData struct {
+	Seasons []BirthdayRenderSeason
+	Header  string
+	Footer  string
+}
+
+type BirthdayRenderSeason struct {
+	Name    string
+	Members []BirthdayMember
+	Text    string
+}
+
+const birthdaysTemplate = `{{.Header}}
+{{range .Seasons -}}
+{{.Name}}
+<blockquote expandable>{{.Text}}</blockquote>
+
+{{end}}
+{{.Footer}}`
+
+var birthdaysTmpl = template.Must(
+	template.New("birthdays").Parse(birthdaysTemplate),
+)
+
 func BuildBirthdaySeasons(members []chatmember.ChatMember) []BirthdaySeason {
 	seasons := make([]BirthdaySeason, len(birthdaySeasons))
+
+	for i, season := range birthdaySeasons {
+		seasons[i].Name = season.Name
+	}
 
 	for _, member := range members {
 		if member.IsLeft() || member.Birthday.IsZero() {
@@ -87,30 +117,68 @@ func BuildBirthdaySeasons(members []chatmember.ChatMember) []BirthdaySeason {
 	return result
 }
 
-func RenderBirthdays(members []chatmember.ChatMember) string {
-	seasons := BuildBirthdaySeasons(members)
+func formatBirthday(member BirthdayMember) string {
+	return fmt.Sprintf(
+		"%s  —  %02d.%02d",
+		member.Name,
+		member.Day,
+		member.Month,
+	)
+}
 
-	var b strings.Builder
+func formatBirthdays(members []BirthdayMember) string {
+	var buf bytes.Buffer
 
-	b.WriteString("Дни рождения участников\n\n")
+	for i := 0; i < len(members); i += 2 {
+		left := formatBirthday(members[i])
 
-	for _, season := range seasons {
-		b.WriteString(season.Name)
-		b.WriteString("\n")
+		buf.WriteString(left)
 
-		b.WriteString("<blockquote expandable>")
-		for i, member := range season.Members {
-			b.WriteString(member.Name)
-			b.WriteString(" — ")
-			b.WriteString(fmt.Sprintf("%02d.%02d", member.Day, member.Month))
-			if i < len(season.Members)-1 {
-				b.WriteString("\n")
+		if i+1 < len(members) {
+			right := formatBirthday(members[i+1])
+
+			padding := 20 - len([]rune(left))
+
+			if padding < 4 {
+				padding = 4
 			}
-		}
-		b.WriteString("</blockquote>")
 
-		b.WriteString("\n")
+			buf.WriteString(strings.Repeat(" ", padding))
+			buf.WriteString(right)
+		}
+
+		if i+2 < len(members) {
+			buf.WriteByte('\n')
+		}
 	}
 
-	return b.String()
+	return buf.String()
+}
+
+func RenderBirthdays(members []chatmember.ChatMember) (string, error) {
+	seasons := BuildBirthdaySeasons(members)
+
+	data := BirthdayRenderData{
+		Seasons: make([]BirthdayRenderSeason, 0, len(seasons)),
+		Header:  "Дни рождения участников\n",
+	}
+
+	for _, season := range seasons {
+		data.Seasons = append(
+			data.Seasons,
+			BirthdayRenderSeason{
+				Name:    season.Name,
+				Members: season.Members,
+				Text:    formatBirthdays(season.Members),
+			},
+		)
+	}
+
+	var buf bytes.Buffer
+
+	if err := birthdaysTmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
 }
