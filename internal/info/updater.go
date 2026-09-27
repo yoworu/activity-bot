@@ -95,7 +95,7 @@ func (r *Updater) UpdateApplyPost(c context.Context, chatID int64, bot *botapi.B
 		return fmt.Errorf("get chat members: %w", err)
 	}
 
-	text, err := RenderApplication(len(members), 45)
+	text, err := RenderApplication(len(members), 51)
 	if err != nil {
 		return fmt.Errorf("render application: %w", err)
 	}
@@ -145,7 +145,7 @@ func (r *Updater) UpdateRestsPost(c context.Context, chatID int64, bot *botapi.B
 		c,
 		bot,
 		"H4venflood",
-		17,
+		45,
 		text,
 	)
 
@@ -181,7 +181,7 @@ func (r *Updater) UpdateBirthdaysPost(c context.Context, chatID int64, bot *bota
 		c,
 		bot,
 		"H4venflood",
-		21,
+		47,
 		RenderBirthdays(members),
 	)
 
