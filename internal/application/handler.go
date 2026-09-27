@@ -111,7 +111,7 @@ func (h *Handler) StartCallback(c *botapi.Context) error {
 
 func (h *Handler) ShowRegions(c *botapi.Context) error {
 	cq := c.Update.CallbackQuery
-	if cq == nil || cq.Message == nil {
+	if cq == nil {
 		return nil
 	}
 
@@ -122,8 +122,10 @@ func (h *Handler) ShowRegions(c *botapi.Context) error {
 	); err != nil {
 		return err
 	}
+	chatID, _ := c.Chat()
+	chatIDInt := chatID.(botapi.ChatIDInt)
 
-	if err := h.editRegionPrompt(c, cq.Message.Chat.ID, cq.Message.MessageID); err != nil {
+	if err := h.editRegionPrompt(c, int64(chatIDInt), cq.Message.MessageID); err != nil {
 		return err
 	}
 
