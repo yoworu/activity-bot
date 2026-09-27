@@ -3,6 +3,8 @@ package application
 import (
 	"activity-bot/internal/roles"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/gotd/botapi"
 )
@@ -37,10 +39,18 @@ func roleKeyboard(available []roles.Role) *botapi.InlineKeyboardMarkup {
 			continue
 		}
 
-		buttons = append(buttons, botapi.InlineButtonData(
+		emojiID, ok := parseEmojiID(role.Emoji)
+		if !ok {
+			continue
+		}
+
+		data := botapi.InlineButtonData(
 			role.Name,
 			fmt.Sprintf("%s%d", callbackRolePrefix, role.ID),
-		))
+		)
+		buttons = append(buttons, data.Styled(&botapi.KeyboardButtonStyle{
+			Icon: &emojiID,
+		}))
 	}
 
 	markup := keyboardRows(buttons, 2)
@@ -55,6 +65,32 @@ func roleKeyboard(available []roles.Role) *botapi.InlineKeyboardMarkup {
 	)
 
 	return markup
+}
+
+func parseEmojiID(s string) (int64, bool) {
+	const prefix = `<tg-emoji emoji-id="`
+	const suffix = `">`
+
+	start := strings.Index(s, prefix)
+	if start == -1 {
+		return 0, false
+	}
+
+	start += len(prefix)
+
+	end := strings.Index(s[start:], suffix)
+	if end == -1 {
+		return 0, false
+	}
+
+	end += start
+
+	id, err := strconv.ParseInt(s[start:end], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+
+	return id, true
 }
 
 func keyboardRows(
