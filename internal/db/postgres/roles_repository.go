@@ -359,8 +359,9 @@ func (r *Repository) GetRoleTemplate(
 			fandom.Categories = append(
 				fandom.Categories,
 				roles.Category{
-					ID:   row.CategoryID.Int64,
-					Name: row.CategoryName.String,
+					ID:    row.CategoryID.Int64,
+					Name:  row.CategoryName.String,
+					Emoji: row.CategoryEmoji.String,
 				},
 			)
 
