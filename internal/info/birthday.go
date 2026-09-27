@@ -10,37 +10,43 @@ import (
 )
 
 type BirthdayMember struct {
-	Name string
-	Day  int
+	Name  string
+	Day   int
+	Month int
 }
 
-type BirthdayMonth struct {
-	Number  int
+type BirthdaySeason struct {
 	Name    string
 	Members []BirthdayMember
 }
 
-var birthdayMonths = [...]string{
-	"январь",
-	"февраль",
-	"март",
-	"апрель",
-	"май",
-	"июнь",
-	"июль",
-	"август",
-	"сентябрь",
-	"октябрь",
-	"ноябрь",
-	"декабрь",
+var birthdaySeasons = [...]struct {
+	Name   string
+	Months []int
+}{
+	{
+		Name:   "winter",
+		Months: []int{12, 1, 2},
+	},
+	{
+		Name:   "spring",
+		Months: []int{3, 4, 5},
+	},
+	{
+		Name:   "summer",
+		Months: []int{6, 7, 8},
+	},
+	{
+		Name:   "autumn",
+		Months: []int{9, 10, 11},
+	},
 }
 
-func BuildBirthdayMonths(members []chatmember.ChatMember) []BirthdayMonth {
-	months := make([]BirthdayMonth, 12)
+func BuildBirthdaySeasons(members []chatmember.ChatMember) []BirthdaySeason {
+	seasons := make([]BirthdaySeason, len(birthdaySeasons))
 
-	for i := range months {
-		months[i].Name = tghtml.Blockquote(utils.UcFirst(birthdayMonths[i]))
-		months[i].Number = i + 1
+	for i, season := range birthdaySeasons {
+		seasons[i].Name = tghtml.Blockquote(utils.UcFirst(season.Name))
 	}
 
 	for _, member := range members {
@@ -49,30 +55,38 @@ func BuildBirthdayMonths(members []chatmember.ChatMember) []BirthdayMonth {
 		}
 
 		birthday := member.Birthday
+		month := int(birthday.Month())
 
-		months[birthday.Month()-1].Members = append(
-			months[birthday.Month()-1].Members,
+		seasonIndex := (month % 12) / 3
+
+		seasons[seasonIndex].Members = append(
+			seasons[seasonIndex].Members,
 			BirthdayMember{
-				Name: member.Display("", false),
-				Day:  birthday.Day(),
+				Name:  member.Display("", false),
+				Day:   birthday.Day(),
+				Month: month,
 			},
 		)
 	}
 
-	for i := range months {
+	for i := range seasons {
 		sort.Slice(
-			months[i].Members,
+			seasons[i].Members,
 			func(a, b int) bool {
-				return months[i].Members[a].Day < months[i].Members[b].Day
+				if seasons[i].Members[a].Month != seasons[i].Members[b].Month {
+					return seasons[i].Members[a].Month < seasons[i].Members[b].Month
+				}
+
+				return seasons[i].Members[a].Day < seasons[i].Members[b].Day
 			},
 		)
 	}
 
-	result := make([]BirthdayMonth, 0, 12)
+	result := make([]BirthdaySeason, 0, 4)
 
-	for _, month := range months {
-		if len(month.Members) > 0 {
-			result = append(result, month)
+	for _, season := range seasons {
+		if len(season.Members) > 0 {
+			result = append(result, season)
 		}
 	}
 
@@ -80,20 +94,20 @@ func BuildBirthdayMonths(members []chatmember.ChatMember) []BirthdayMonth {
 }
 
 func RenderBirthdays(members []chatmember.ChatMember) string {
-	months := BuildBirthdayMonths(members)
+	seasons := BuildBirthdaySeasons(members)
 
 	var b strings.Builder
 
 	b.WriteString("Дни рождения участников\n\n")
 
-	for _, month := range months {
-		b.WriteString(month.Name)
+	for _, season := range seasons {
+		b.WriteString(season.Name)
 		b.WriteString("\n")
 
-		for _, member := range month.Members {
+		for _, member := range season.Members {
 			b.WriteString(member.Name)
 			b.WriteString(" — ")
-			b.WriteString(fmt.Sprintf("%02d.%02d", member.Day, month.Number))
+			b.WriteString(fmt.Sprintf("%02d.%02d", member.Day, member.Month))
 			b.WriteString("\n")
 		}
 
