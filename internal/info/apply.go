@@ -7,18 +7,16 @@ import (
 
 const applicationTemplate = `
 ──────────────────
-               𝗔𝗣𝗣𝗟𝗬
+       𝗔𝗣𝗣𝗟𝗬
 ──────────────────
 
      статус – <u>{{if .Open}}открыт{{else}}закрыт{{end}}</u>
-
                 {{.Current}}/{{.Max}}
 
      для вступления
-
      <a href="http://t.me/HavenGateBot?start=true">напишите свою роль боту</a>
 
-      ˚₊·— ⁠⁠⁠♡ <a href="https://t.me/H4venflood/15">список ролей</a>
+      ˚₊·— ⁠⁠⁠♡ <a href="https://t.me/h4venflood/41">список ролей</a>
 
 ˚₊‧✩ ˚₊‧꒰ა ʚིᵋº‌‌‌‌‌‌ᵌɞྀ ໒꒱ ‧₊˚ ✩‧₊˚•*¨*•.¸¸☆*
 `
