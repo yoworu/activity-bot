@@ -210,7 +210,7 @@ func editCaption(
 		botapi.WithReplyMarkup(
 			botapi.InlineKeyboard(
 				botapi.InlineRow(
-					botapi.InlineButtonURL("☍ Navigation", "https://t.me/H4venflood/5"),
+					botapi.InlineButtonURL("☍ к навигации", "https://t.me/H4venflood/5"),
 				),
 			),
 		),
