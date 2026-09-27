@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	fsm "github.com/fluffur/botapi-fsm"
 
 	"github.com/gotd/botapi"
@@ -130,6 +131,7 @@ func (h *Handler) SelectRegion(c *botapi.Context) error {
 	if cq == nil {
 		return nil
 	}
+	spew.Dump("SELECT REGION")
 
 	categoryID, err := strconv.ParseInt(
 		strings.TrimPrefix(cq.Data, callbackRegionPrefix),
