@@ -14,7 +14,7 @@ const applicationTemplate = `
                 {{.Current}}/{{.Max}}
 
      для вступления
-     <a href="http://t.me/HavenGateBot?start=true">напишите свою роль боту</a>
+     <a href="http://t.me/HavenGateBot?start=true">напишите боту</a>
 
       ˚₊·— ⁠⁠⁠♡ <a href="https://t.me/h4venflood/41">список ролей</a>
 
