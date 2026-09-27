@@ -86,8 +86,6 @@ github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/gotd/botapi v0.2.1-0.20260729151941-c0ef8fa85832 h1:LbcY7tFff7XZwmVu2PgnCqp8R1Nu9TTJmjgYatRis2Y=
-github.com/gotd/botapi v0.2.1-0.20260729151941-c0ef8fa85832/go.mod h1:YCv79w5iSq8nFTwe4XSf5OAo5NRMXF4r3dILgsGEZVY=
 github.com/gotd/contrib v0.25.0 h1:92JYybbOI7nApz7uaLahEMfUfnZ0/ECdfFscAzg5k7c=
 github.com/gotd/contrib v0.25.0/go.mod h1:OoocKgWvcTIDKstQBkGJ8fZCMvwU9C2IVirPOo1rwvk=
 github.com/gotd/ige v0.3.0 h1:4f6LEHWsVDLBG0bT9wWG2/9TZb5aWm265G8ZlTXmRRU=
@@ -218,6 +216,7 @@ github.com/wk8/go-ordered-map/v2 v2.1.8 h1:5h/BUHu93oj4gIdvHHHGsScSTMijfx5PeYkE/
 github.com/wk8/go-ordered-map/v2 v2.1.8/go.mod h1:5nJHM5DyteebpVlHnWMV0rPz6Zp7+xBAnxjb1X5vnTw=
 github.com/xyproto/randomstring v1.0.5 h1:YtlWPoRdgMu3NZtP45drfy1GKoojuR7hmRcnhZqKjWU=
 github.com/xyproto/randomstring v1.0.5/go.mod h1:rgmS5DeNXLivK7YprL0pY+lTuhNQW3iGxZ18UQApw/E=
+github.com/yoworu/botapi v0.0.0-20260927102428-a424efb7344f h1:GPYncShmAjoodDKmm+lh2cPdEKgrUg1a06vQp7vDnj0=
 github.com/yoworu/botapi v0.0.0-20260927102428-a424efb7344f/go.mod h1:YCv79w5iSq8nFTwe4XSf5OAo5NRMXF4r3dILgsGEZVY=
 github.com/yuin/goldmark v1.8.4 h1:oat/nd3U6NeQqFEL3xpEJq7d7c86NI+DbSNGAs4xnjA=
 github.com/yuin/goldmark v1.8.4/go.mod h1:ip/1k0VRfGynBgxOz0yCqHrbZXhcjxyuS66Brc7iBKg=
