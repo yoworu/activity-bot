@@ -2,8 +2,6 @@ package info
 
 import (
 	"activity-bot/internal/chatmember"
-	"activity-bot/internal/utils"
-	"activity-bot/internal/utils/tghtml"
 	"fmt"
 	"sort"
 	"strings"
@@ -44,10 +42,6 @@ var birthdaySeasons = [...]struct {
 
 func BuildBirthdaySeasons(members []chatmember.ChatMember) []BirthdaySeason {
 	seasons := make([]BirthdaySeason, len(birthdaySeasons))
-
-	for i, season := range birthdaySeasons {
-		seasons[i].Name = tghtml.Blockquote(utils.UcFirst(season.Name))
-	}
 
 	for _, member := range members {
 		if member.IsLeft() || member.Birthday.IsZero() {
@@ -104,12 +98,16 @@ func RenderBirthdays(members []chatmember.ChatMember) string {
 		b.WriteString(season.Name)
 		b.WriteString("\n")
 
-		for _, member := range season.Members {
+		b.WriteString("<blockquote expandable>")
+		for i, member := range season.Members {
 			b.WriteString(member.Name)
 			b.WriteString(" — ")
 			b.WriteString(fmt.Sprintf("%02d.%02d", member.Day, member.Month))
-			b.WriteString("\n")
+			if i < len(season.Members)-1 {
+				b.WriteString("\n")
+			}
 		}
+		b.WriteString("</blockquote>")
 
 		b.WriteString("\n")
 	}
