@@ -178,7 +178,7 @@ FROM fandoms f
                    ON ra.role_id = r.id
 WHERE f.chat_id = $1
   AND f.name = $2
-ORDER BY rc.name,
+ORDER BY rc.created_at,
          r.name,
          ra.name;
 
