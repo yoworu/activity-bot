@@ -74,7 +74,7 @@ INSERT INTO role_categories (fandom_id,
 VALUES ($1, $2) ON CONFLICT (fandom_id, name)
     DO
 UPDATE SET name = EXCLUDED.name
-    RETURNING id, fandom_id, name, created_at, position
+    RETURNING id, fandom_id, name, created_at, position, emoji
 `
 
 type CreateRoleCategoryParams struct {
@@ -91,6 +91,7 @@ func (q *Queries) CreateRoleCategory(ctx context.Context, arg CreateRoleCategory
 		&i.Name,
 		&i.CreatedAt,
 		&i.Position,
+		&i.Emoji,
 	)
 	return i, err
 }
@@ -177,6 +178,7 @@ SELECT f.id          AS fandom_id,
        rc.name       AS category_name,
        rc.created_at AS category_created_at,
        rc.position   AS category_position,
+       rc.emoji      AS category_emoji,
 
        r.id          AS role_id,
        r.category_id AS role_category_id,
@@ -215,6 +217,7 @@ type GetFandomWithRolesRow struct {
 	CategoryName      pgtype.Text        `db:"category_name" json:"categoryName"`
 	CategoryCreatedAt pgtype.Timestamptz `db:"category_created_at" json:"categoryCreatedAt"`
 	CategoryPosition  pgtype.Int4        `db:"category_position" json:"categoryPosition"`
+	CategoryEmoji     pgtype.Text        `db:"category_emoji" json:"categoryEmoji"`
 	RoleID            pgtype.Int8        `db:"role_id" json:"roleId"`
 	RoleCategoryID    pgtype.Int8        `db:"role_category_id" json:"roleCategoryId"`
 	RoleName          pgtype.Text        `db:"role_name" json:"roleName"`
@@ -243,6 +246,7 @@ func (q *Queries) GetFandomWithRoles(ctx context.Context, arg GetFandomWithRoles
 			&i.CategoryName,
 			&i.CategoryCreatedAt,
 			&i.CategoryPosition,
+			&i.CategoryEmoji,
 			&i.RoleID,
 			&i.RoleCategoryID,
 			&i.RoleName,
@@ -387,7 +391,7 @@ func (q *Queries) GetRoleByNameOrAlias(ctx context.Context, arg GetRoleByNameOrA
 }
 
 const getRoleCategory = `-- name: GetRoleCategory :one
-SELECT id, fandom_id, name, created_at, position
+SELECT id, fandom_id, name, created_at, position, emoji
 FROM role_categories
 WHERE fandom_id = $1
   AND name = $2
@@ -407,6 +411,7 @@ func (q *Queries) GetRoleCategory(ctx context.Context, arg GetRoleCategoryParams
 		&i.Name,
 		&i.CreatedAt,
 		&i.Position,
+		&i.Emoji,
 	)
 	return i, err
 }
@@ -437,11 +442,7 @@ func (q *Queries) GetRoleReservation(ctx context.Context, arg GetRoleReservation
 }
 
 const listRoleCategories = `-- name: ListRoleCategories :many
-SELECT id,
-       fandom_id,
-       name,
-       created_at,
-       position
+SELECT id, fandom_id, name, created_at, position, emoji
 FROM role_categories
 WHERE fandom_id = $1
 ORDER BY name
@@ -462,6 +463,7 @@ func (q *Queries) ListRoleCategories(ctx context.Context, fandomID int64) ([]Rol
 			&i.Name,
 			&i.CreatedAt,
 			&i.Position,
+			&i.Emoji,
 		); err != nil {
 			return nil, err
 		}
@@ -476,7 +478,7 @@ func (q *Queries) ListRoleCategories(ctx context.Context, fandomID int64) ([]Rol
 const listRoleReservations = `-- name: ListRoleReservations :many
 SELECT rr.id, rr.chat_id, rr.role_id, rr.created_at, rr.user_id,
        r.id, r.category_id, r.name, r.emoji, r.created_at,
-       rc.id, rc.fandom_id, rc.name, rc.created_at, rc.position,
+       rc.id, rc.fandom_id, rc.name, rc.created_at, rc.position, rc.emoji,
        f.id, f.chat_id, f.name
 FROM role_reservations rr
          JOIN roles r ON r.id = rr.role_id
@@ -518,6 +520,7 @@ func (q *Queries) ListRoleReservations(ctx context.Context, chatID int64) ([]Lis
 			&i.RoleCategory.Name,
 			&i.RoleCategory.CreatedAt,
 			&i.RoleCategory.Position,
+			&i.RoleCategory.Emoji,
 			&i.Fandom.ID,
 			&i.Fandom.ChatID,
 			&i.Fandom.Name,

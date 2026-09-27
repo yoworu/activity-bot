@@ -329,6 +329,7 @@ type RoleCategory struct {
 	Name      string             `db:"name" json:"name"`
 	CreatedAt pgtype.Timestamptz `db:"created_at" json:"createdAt"`
 	Position  int32              `db:"position" json:"position"`
+	Emoji     pgtype.Text        `db:"emoji" json:"emoji"`
 }
 
 type RoleReservation struct {

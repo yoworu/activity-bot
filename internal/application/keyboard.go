@@ -22,10 +22,19 @@ func regionKeyboard(categories []roles.Category) *botapi.InlineKeyboardMarkup {
 			continue
 		}
 
-		buttons = append(buttons, botapi.InlineButtonData(
+		emojiID, ok := parseEmojiID(category.Emoji)
+		if !ok {
+			continue
+		}
+
+		data := botapi.InlineButtonData(
 			category.Name,
 			fmt.Sprintf("%s%d", callbackRegionPrefix, category.ID),
-		))
+		)
+
+		buttons = append(buttons, data.Styled(&botapi.KeyboardButtonStyle{
+			Icon: &emojiID,
+		}))
 	}
 
 	return keyboardRows(buttons, 1)

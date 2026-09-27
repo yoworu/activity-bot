@@ -148,7 +148,9 @@ func mapFandom(row db.Fandom) roles.Fandom {
 
 func mapCategory(row db.RoleCategory) roles.Category {
 	return roles.Category{
-		Name: row.Name,
+		ID:    row.ID,
+		Name:  row.Name,
+		Emoji: row.Emoji.String,
 	}
 }
 
