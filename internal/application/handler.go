@@ -132,7 +132,7 @@ func (h *Handler) ShowRegions(c *botapi.Context) error {
 
 func (h *Handler) SelectRegion(c *botapi.Context) error {
 	cq := c.Update.CallbackQuery
-	if cq == nil || cq.Message == nil {
+	if cq == nil {
 		return nil
 	}
 
@@ -186,9 +186,11 @@ func (h *Handler) SelectRegion(c *botapi.Context) error {
 		text = "В этом регионе нет свободных ролей"
 	}
 
+	chatID, _ := c.Chat()
+
 	if _, err := c.Bot.EditMessageText(
 		c,
-		botapi.ID(cq.Message.Chat.ID),
+		chatID,
 		cq.Message.MessageID,
 		text,
 		botapi.WithReplyMarkup(roleKeyboard(available)),
