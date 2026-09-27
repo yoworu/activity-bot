@@ -65,7 +65,7 @@ func (h *Handler) Start(c *botapi.Context) error {
 
 	if err := h.appFSM.Enter(
 		c,
-		AppStateAwaitRegion,
+		AppStateAwaitRole,
 		AppStateData{},
 	); err != nil {
 		return err
@@ -82,7 +82,7 @@ func (h *Handler) StartCallback(c *botapi.Context) error {
 
 	if err := h.appFSM.Enter(
 		c,
-		AppStateAwaitRegion,
+		AppStateAwaitRole,
 		AppStateData{},
 	); err != nil {
 		return err
@@ -115,13 +115,6 @@ func (h *Handler) ShowRegions(c *botapi.Context) error {
 		return nil
 	}
 
-	if err := h.appFSM.Enter(
-		c,
-		AppStateAwaitRegion,
-		AppStateData{},
-	); err != nil {
-		return err
-	}
 	chatID, _ := c.Chat()
 	chatIDInt := chatID.(botapi.ChatIDInt)
 

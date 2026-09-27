@@ -8,7 +8,6 @@ type State string
 
 const (
 	AppStateIdle           State = ""
-	AppStateAwaitRegion    State = "await_region"
 	AppStateAwaitRole      State = "await_role"
 	AppStateAwaitBirthDate State = "await_birth_date"
 	AppStateConfirmRules   State = "confirm_role"

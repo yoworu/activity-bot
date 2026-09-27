@@ -530,7 +530,7 @@ func runApplicationBot(
 	bot.OnCallbackQuery(
 		appHandler.SelectRegion,
 		botapi.CallbackPrefix("app:region:"),
-		appFSM.State(application.AppStateAwaitRegion),
+		appFSM.State(application.AppStateAwaitRole),
 		botapi.ChatTypeIs(botapi.ChatTypePrivate),
 	)
 
