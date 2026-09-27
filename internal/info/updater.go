@@ -64,8 +64,8 @@ func (r *Updater) UpdateRolesPost(c context.Context, chatID int64, bot *botapi.B
 	err = editCaption(
 		c,
 		bot,
-		"H4venflood",
-		24,
+		"h4venflood",
+		41,
 		text,
 	)
 
