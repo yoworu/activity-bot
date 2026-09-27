@@ -5,15 +5,18 @@ WHERE chat_id = $1
   AND name = $2;
 
 -- name: DeleteFandom :exec
-DELETE FROM fandoms WHERE chat_id = $1 AND name = $2;
+DELETE
+FROM fandoms
+WHERE chat_id = $1
+  AND name = $2;
 
 -- name: GetOrCreateFandom :one
 INSERT INTO fandoms (chat_id,
                      name)
-VALUES ($1, $2)
-ON CONFLICT (chat_id, name)
-    DO UPDATE SET name = EXCLUDED.name
-RETURNING
+VALUES ($1, $2) ON CONFLICT (chat_id, name)
+    DO
+UPDATE SET name = EXCLUDED.name
+    RETURNING
     id,
     chat_id,
     name;
@@ -22,10 +25,10 @@ RETURNING
 -- name: CreateRoleCategory :one
 INSERT INTO role_categories (fandom_id,
                              name)
-VALUES ($1, $2)
-ON CONFLICT (fandom_id, name)
-    DO UPDATE SET name = EXCLUDED.name
-RETURNING
+VALUES ($1, $2) ON CONFLICT (fandom_id, name)
+    DO
+UPDATE SET name = EXCLUDED.name
+    RETURNING
     id,
     fandom_id,
     name,
@@ -36,10 +39,10 @@ RETURNING
 INSERT INTO roles (category_id,
                    name,
                    emoji)
-VALUES ($1, $2, $3)
-ON CONFLICT (category_id, name)
-    DO UPDATE SET emoji = EXCLUDED.emoji
-RETURNING
+VALUES ($1, $2, $3) ON CONFLICT (category_id, name)
+    DO
+UPDATE SET emoji = EXCLUDED.emoji
+    RETURNING
     id,
     category_id,
     name,
@@ -50,8 +53,7 @@ RETURNING
 -- name: CreateRoleAlias :one
 INSERT INTO role_aliases (role_id,
                           name)
-VALUES ($1, $2)
-ON CONFLICT (role_id, name)
+VALUES ($1, $2) ON CONFLICT (role_id, name)
     DO NOTHING
 RETURNING
     id,
@@ -93,15 +95,14 @@ WHERE f.chat_id = $1
     LOWER(r.name) = LOWER($3)
         OR LOWER(ra.name) = LOWER($3)
     )
-LIMIT 1;
+    LIMIT 1;
 
 
 -- name: CreateRoleReservation :exec
 INSERT INTO role_reservations (chat_id,
                                user_id,
                                role_id)
-VALUES ($1, $2, $3)
-ON CONFLICT (chat_id, role_id)
+VALUES ($1, $2, $3) ON CONFLICT (chat_id, role_id)
     DO NOTHING;
 
 -- name: DeleteRoleReservation :exec
@@ -132,10 +133,7 @@ ORDER BY f.name, rc.name, r.name;
 
 
 -- name: GetRoleCategory :one
-SELECT id,
-       fandom_id,
-       name,
-       created_at
+SELECT *
 FROM role_categories
 WHERE fandom_id = $1
   AND name = $2;
@@ -145,7 +143,8 @@ WHERE fandom_id = $1
 SELECT id,
        fandom_id,
        name,
-       created_at
+       created_at,
+       position
 FROM role_categories
 WHERE fandom_id = $1
 ORDER BY name;
@@ -159,6 +158,7 @@ SELECT f.id          AS fandom_id,
        rc.fandom_id  AS category_fandom_id,
        rc.name       AS category_name,
        rc.created_at AS category_created_at,
+       rc.position   AS category_position,
 
        r.id          AS role_id,
        r.category_id AS role_category_id,
@@ -192,6 +192,7 @@ SELECT f.id          AS fandom_id,
        rc.fandom_id  AS category_fandom_id,
        rc.name       AS category_name,
        rc.created_at AS category_created_at,
+       rc.position   AS category_position,
 
        r.id          AS role_id,
        r.category_id AS role_category_id,

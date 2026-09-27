@@ -15,10 +15,10 @@ const createRole = `-- name: CreateRole :one
 INSERT INTO roles (category_id,
                    name,
                    emoji)
-VALUES ($1, $2, $3)
-ON CONFLICT (category_id, name)
-    DO UPDATE SET emoji = EXCLUDED.emoji
-RETURNING
+VALUES ($1, $2, $3) ON CONFLICT (category_id, name)
+    DO
+UPDATE SET emoji = EXCLUDED.emoji
+    RETURNING
     id,
     category_id,
     name,
@@ -48,8 +48,7 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, e
 const createRoleAlias = `-- name: CreateRoleAlias :one
 INSERT INTO role_aliases (role_id,
                           name)
-VALUES ($1, $2)
-ON CONFLICT (role_id, name)
+VALUES ($1, $2) ON CONFLICT (role_id, name)
     DO NOTHING
 RETURNING
     id,
@@ -72,10 +71,10 @@ func (q *Queries) CreateRoleAlias(ctx context.Context, arg CreateRoleAliasParams
 const createRoleCategory = `-- name: CreateRoleCategory :one
 INSERT INTO role_categories (fandom_id,
                              name)
-VALUES ($1, $2)
-ON CONFLICT (fandom_id, name)
-    DO UPDATE SET name = EXCLUDED.name
-RETURNING
+VALUES ($1, $2) ON CONFLICT (fandom_id, name)
+    DO
+UPDATE SET name = EXCLUDED.name
+    RETURNING
     id,
     fandom_id,
     name,
@@ -110,8 +109,7 @@ const createRoleReservation = `-- name: CreateRoleReservation :exec
 INSERT INTO role_reservations (chat_id,
                                user_id,
                                role_id)
-VALUES ($1, $2, $3)
-ON CONFLICT (chat_id, role_id)
+VALUES ($1, $2, $3) ON CONFLICT (chat_id, role_id)
     DO NOTHING
 `
 
@@ -127,7 +125,10 @@ func (q *Queries) CreateRoleReservation(ctx context.Context, arg CreateRoleReser
 }
 
 const deleteFandom = `-- name: DeleteFandom :exec
-DELETE FROM fandoms WHERE chat_id = $1 AND name = $2
+DELETE
+FROM fandoms
+WHERE chat_id = $1
+  AND name = $2
 `
 
 type DeleteFandomParams struct {
@@ -185,6 +186,7 @@ SELECT f.id          AS fandom_id,
        rc.fandom_id  AS category_fandom_id,
        rc.name       AS category_name,
        rc.created_at AS category_created_at,
+       rc.position   AS category_position,
 
        r.id          AS role_id,
        r.category_id AS role_category_id,
@@ -222,6 +224,7 @@ type GetFandomWithRolesRow struct {
 	CategoryFandomID  pgtype.Int8        `db:"category_fandom_id" json:"categoryFandomId"`
 	CategoryName      pgtype.Text        `db:"category_name" json:"categoryName"`
 	CategoryCreatedAt pgtype.Timestamptz `db:"category_created_at" json:"categoryCreatedAt"`
+	CategoryPosition  pgtype.Int4        `db:"category_position" json:"categoryPosition"`
 	RoleID            pgtype.Int8        `db:"role_id" json:"roleId"`
 	RoleCategoryID    pgtype.Int8        `db:"role_category_id" json:"roleCategoryId"`
 	RoleName          pgtype.Text        `db:"role_name" json:"roleName"`
@@ -249,6 +252,7 @@ func (q *Queries) GetFandomWithRoles(ctx context.Context, arg GetFandomWithRoles
 			&i.CategoryFandomID,
 			&i.CategoryName,
 			&i.CategoryCreatedAt,
+			&i.CategoryPosition,
 			&i.RoleID,
 			&i.RoleCategoryID,
 			&i.RoleName,
@@ -271,10 +275,10 @@ func (q *Queries) GetFandomWithRoles(ctx context.Context, arg GetFandomWithRoles
 const getOrCreateFandom = `-- name: GetOrCreateFandom :one
 INSERT INTO fandoms (chat_id,
                      name)
-VALUES ($1, $2)
-ON CONFLICT (chat_id, name)
-    DO UPDATE SET name = EXCLUDED.name
-RETURNING
+VALUES ($1, $2) ON CONFLICT (chat_id, name)
+    DO
+UPDATE SET name = EXCLUDED.name
+    RETURNING
     id,
     chat_id,
     name
@@ -370,7 +374,7 @@ WHERE f.chat_id = $1
     LOWER(r.name) = LOWER($3)
         OR LOWER(ra.name) = LOWER($3)
     )
-LIMIT 1
+    LIMIT 1
 `
 
 type GetRoleByNameOrAliasParams struct {
@@ -393,10 +397,7 @@ func (q *Queries) GetRoleByNameOrAlias(ctx context.Context, arg GetRoleByNameOrA
 }
 
 const getRoleCategory = `-- name: GetRoleCategory :one
-SELECT id,
-       fandom_id,
-       name,
-       created_at
+SELECT id, fandom_id, name, created_at, position
 FROM role_categories
 WHERE fandom_id = $1
   AND name = $2
@@ -407,21 +408,15 @@ type GetRoleCategoryParams struct {
 	Name     string `db:"name" json:"name"`
 }
 
-type GetRoleCategoryRow struct {
-	ID        int64              `db:"id" json:"id"`
-	FandomID  int64              `db:"fandom_id" json:"fandomId"`
-	Name      string             `db:"name" json:"name"`
-	CreatedAt pgtype.Timestamptz `db:"created_at" json:"createdAt"`
-}
-
-func (q *Queries) GetRoleCategory(ctx context.Context, arg GetRoleCategoryParams) (GetRoleCategoryRow, error) {
+func (q *Queries) GetRoleCategory(ctx context.Context, arg GetRoleCategoryParams) (RoleCategory, error) {
 	row := q.db.QueryRow(ctx, getRoleCategory, arg.FandomID, arg.Name)
-	var i GetRoleCategoryRow
+	var i RoleCategory
 	err := row.Scan(
 		&i.ID,
 		&i.FandomID,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Position,
 	)
 	return i, err
 }
@@ -455,33 +450,28 @@ const listRoleCategories = `-- name: ListRoleCategories :many
 SELECT id,
        fandom_id,
        name,
-       created_at
+       created_at,
+       position
 FROM role_categories
 WHERE fandom_id = $1
 ORDER BY name
 `
 
-type ListRoleCategoriesRow struct {
-	ID        int64              `db:"id" json:"id"`
-	FandomID  int64              `db:"fandom_id" json:"fandomId"`
-	Name      string             `db:"name" json:"name"`
-	CreatedAt pgtype.Timestamptz `db:"created_at" json:"createdAt"`
-}
-
-func (q *Queries) ListRoleCategories(ctx context.Context, fandomID int64) ([]ListRoleCategoriesRow, error) {
+func (q *Queries) ListRoleCategories(ctx context.Context, fandomID int64) ([]RoleCategory, error) {
 	rows, err := q.db.Query(ctx, listRoleCategories, fandomID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListRoleCategoriesRow{}
+	items := []RoleCategory{}
 	for rows.Next() {
-		var i ListRoleCategoriesRow
+		var i RoleCategory
 		if err := rows.Scan(
 			&i.ID,
 			&i.FandomID,
 			&i.Name,
 			&i.CreatedAt,
+			&i.Position,
 		); err != nil {
 			return nil, err
 		}
@@ -561,6 +551,7 @@ SELECT f.id          AS fandom_id,
        rc.fandom_id  AS category_fandom_id,
        rc.name       AS category_name,
        rc.created_at AS category_created_at,
+       rc.position   AS category_position,
 
        r.id          AS role_id,
        r.category_id AS role_category_id,
@@ -593,6 +584,7 @@ type ListRoleTemplatesRow struct {
 	CategoryFandomID  int64              `db:"category_fandom_id" json:"categoryFandomId"`
 	CategoryName      string             `db:"category_name" json:"categoryName"`
 	CategoryCreatedAt pgtype.Timestamptz `db:"category_created_at" json:"categoryCreatedAt"`
+	CategoryPosition  int32              `db:"category_position" json:"categoryPosition"`
 	RoleID            int64              `db:"role_id" json:"roleId"`
 	RoleCategoryID    int64              `db:"role_category_id" json:"roleCategoryId"`
 	RoleName          string             `db:"role_name" json:"roleName"`
@@ -620,6 +612,7 @@ func (q *Queries) ListRoleTemplates(ctx context.Context, chatID int64) ([]ListRo
 			&i.CategoryFandomID,
 			&i.CategoryName,
 			&i.CategoryCreatedAt,
+			&i.CategoryPosition,
 			&i.RoleID,
 			&i.RoleCategoryID,
 			&i.RoleName,
