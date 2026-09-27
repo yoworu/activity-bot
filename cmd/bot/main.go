@@ -520,10 +520,24 @@ func runApplicationBot(
 		botapi.CallbackData("app:new"),
 	)
 
-	bot.OnMessage(
-		appHandler.ProcessRole,
+	bot.OnCallbackQuery(
+		appHandler.ShowRegions,
+		botapi.CallbackData("app:regions"),
 		appFSM.State(application.AppStateAwaitRole),
-		botapi.HasText(),
+		botapi.ChatTypeIs(botapi.ChatTypePrivate),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.SelectRegion,
+		botapi.CallbackPrefix("app:region:"),
+		appFSM.State(application.AppStateAwaitRegion),
+		botapi.ChatTypeIs(botapi.ChatTypePrivate),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.SelectRole,
+		botapi.CallbackPrefix("app:role:"),
+		appFSM.State(application.AppStateAwaitRole),
 		botapi.ChatTypeIs(botapi.ChatTypePrivate),
 	)
 

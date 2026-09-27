@@ -8,6 +8,7 @@ type State string
 
 const (
 	AppStateIdle           State = ""
+	AppStateAwaitRegion    State = "await_region"
 	AppStateAwaitRole      State = "await_role"
 	AppStateAwaitBirthDate State = "await_birth_date"
 	AppStateConfirmRules   State = "confirm_role"
@@ -15,8 +16,9 @@ const (
 )
 
 type AppStateData struct {
-	Role      roles.Role
-	BirthDate string
+	CategoryID int64
+	Role       roles.Role
+	BirthDate  string
 }
 
 type RejectState string

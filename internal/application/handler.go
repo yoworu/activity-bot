@@ -2,7 +2,6 @@ package application
 
 import (
 	"activity-bot/internal/chatmember"
-	"activity-bot/internal/predicate"
 	"activity-bot/internal/roles"
 	"activity-bot/internal/utils/tghtml"
 	"fmt"
@@ -66,21 +65,13 @@ func (h *Handler) Start(c *botapi.Context) error {
 
 	if err := h.appFSM.Enter(
 		c,
-		AppStateAwaitRole,
+		AppStateAwaitRegion,
 		AppStateData{},
 	); err != nil {
 		return err
 	}
 
-	_, err = c.Reply(
-		"Отправьте этому боту желаемую роль одним сообщением\n\n"+
-			tghtml.PatPatEmoji()+" "+
-			tghtml.Link(h.rolesPostLink, "Роли флуда"),
-		botapi.WithParseMode(botapi.ParseModeHTML),
-		botapi.DisableWebPagePreview(),
-	)
-
-	return err
+	return h.sendRegionPrompt(c)
 }
 
 func (h *Handler) StartCallback(c *botapi.Context) error {
@@ -91,7 +82,7 @@ func (h *Handler) StartCallback(c *botapi.Context) error {
 
 	if err := h.appFSM.Enter(
 		c,
-		AppStateAwaitRole,
+		AppStateAwaitRegion,
 		AppStateData{},
 	); err != nil {
 		return err
@@ -107,16 +98,7 @@ func (h *Handler) StartCallback(c *botapi.Context) error {
 		return fmt.Errorf("remove old keyboard: %w", err)
 	}
 
-	_, err = c.Bot.SendMessage(
-		c,
-		botapi.ID(cq.From.ID),
-		"Хорошо, отправьте желаемую роль заново\n\n"+
-			tghtml.PatPatEmoji()+" "+
-			tghtml.Link(h.rolesPostLink, "Роли флуда"),
-		botapi.WithParseMode(botapi.ParseModeHTML),
-		botapi.DisableWebPagePreview(),
-	)
-	if err != nil {
+	if err := h.sendRegionPromptTo(c, cq.From.ID); err != nil {
 		return err
 	}
 
@@ -127,50 +109,143 @@ func (h *Handler) StartCallback(c *botapi.Context) error {
 	)
 }
 
-func (h *Handler) ProcessRole(c *botapi.Context) error {
-	msg := c.Message()
-	if msg == nil {
+func (h *Handler) ShowRegions(c *botapi.Context) error {
+	cq := c.Update.CallbackQuery
+	if cq == nil || cq.Message == nil {
 		return nil
 	}
 
-	role := predicate.NormalizeTag(msg.Text)
-
-	if role == "" {
-		_, err := c.Reply(
-			"Пожалуйста, укажите корректную роль.",
-		)
-		return err
-	}
-
-	members, err := h.chatMemberService.ListHumanPresentChatMembers(
-		c.Background(),
-		h.targetChatID,
-	)
-	if err != nil {
-		return fmt.Errorf("list chat members: %w", err)
-	}
-
-	foundRole, err := h.rolesRepository.GetRoleByNameOrAlias(
+	if err := h.appFSM.Enter(
 		c,
-		h.targetChatID,
-		"Genshin Impact",
-		role,
-	)
-	if err != nil {
-		_, err := c.Reply(
-			"Данная роль не найдена, пожалуйста укажите в сообщении существующую роль",
-		)
+		AppStateAwaitRegion,
+		AppStateData{},
+	); err != nil {
 		return err
 	}
 
-	for _, m := range members {
-		if strings.EqualFold(predicate.NormalizeTag(m.Tag), role) {
-			_, err := c.Reply(
-				"Эта роль уже занята. Пожалуйста, выберите другую.",
-			)
+	if err := h.editRegionPrompt(c, cq.Message.Chat.ID, cq.Message.MessageID); err != nil {
+		return err
+	}
 
-			return err
+	return c.AnswerCallback()
+}
+
+func (h *Handler) SelectRegion(c *botapi.Context) error {
+	cq := c.Update.CallbackQuery
+	if cq == nil || cq.Message == nil {
+		return nil
+	}
+
+	categoryID, err := strconv.ParseInt(
+		strings.TrimPrefix(cq.Data, callbackRegionPrefix),
+		10,
+		64,
+	)
+	if err != nil {
+		return fmt.Errorf("parse region: %w", err)
+	}
+
+	fandom, err := h.loadGenshinFandom(c)
+	if err != nil {
+		return err
+	}
+
+	var category *roles.Category
+
+	for i := range fandom.Categories {
+		if fandom.Categories[i].ID == categoryID {
+			category = &fandom.Categories[i]
+			break
 		}
+	}
+
+	if category == nil {
+		return c.AnswerCallback(
+			botapi.WithCallbackText("Регион не найден"),
+		)
+	}
+
+	available, err := h.availableRoles(c, category.Roles)
+	if err != nil {
+		return err
+	}
+
+	if err := h.appFSM.Enter(
+		c,
+		AppStateAwaitRole,
+		AppStateData{
+			CategoryID: category.ID,
+		},
+	); err != nil {
+		return err
+	}
+
+	text := "Выберите роль"
+
+	if len(available) == 0 {
+		text = "В этом регионе нет свободных ролей"
+	}
+
+	if _, err := c.Bot.EditMessageText(
+		c,
+		botapi.ID(cq.Message.Chat.ID),
+		cq.Message.MessageID,
+		text,
+		botapi.WithReplyMarkup(roleKeyboard(available)),
+	); err != nil {
+		return fmt.Errorf("edit role keyboard: %w", err)
+	}
+
+	return c.AnswerCallback()
+}
+
+func (h *Handler) SelectRole(c *botapi.Context) error {
+	cq := c.Update.CallbackQuery
+	if cq == nil || cq.Message == nil {
+		return nil
+	}
+
+	roleID, err := strconv.ParseInt(
+		strings.TrimPrefix(cq.Data, callbackRolePrefix),
+		10,
+		64,
+	)
+	if err != nil {
+		return fmt.Errorf("parse role: %w", err)
+	}
+
+	sess, ok, err := h.appFSM.Get(c)
+	if err != nil {
+		return err
+	}
+	if !ok || sess.State != AppStateAwaitRole {
+		return c.AnswerCallback(
+			botapi.WithCallbackText("Сначала выберите регион"),
+		)
+	}
+
+	fandom, err := h.loadGenshinFandom(c)
+	if err != nil {
+		return err
+	}
+
+	foundRole, ok := findRoleInFandom(fandom, sess.Data.CategoryID, roleID)
+	if !ok {
+		return c.AnswerCallback(
+			botapi.WithCallbackText("Роль не найдена"),
+		)
+	}
+
+	available, err := h.availableRoles(c, []roles.Role{foundRole})
+	if err != nil {
+		return err
+	}
+	if len(available) == 0 {
+		_ = c.AnswerCallback(
+			botapi.WithCallbackText("Эта роль уже занята или забронирована"),
+		)
+
+		return h.refreshRoleKeyboard(c, sess.Data.CategoryID)
 	}
 
 	if err := h.appFSM.Enter(
@@ -183,12 +258,26 @@ func (h *Handler) ProcessRole(c *botapi.Context) error {
 		return err
 	}
 
-	_, err = c.Reply(
-		"Укажите вашу дату рождения.\n\n" +
+	if _, err := c.Bot.EditMessageText(
+		c,
+		botapi.ID(cq.Message.Chat.ID),
+		cq.Message.MessageID,
+		fmt.Sprintf("Выбрана роль: %s", foundRole.Name),
+	); err != nil {
+		return fmt.Errorf("edit selected role: %w", err)
+	}
+
+	_, err = c.Bot.SendMessage(
+		c,
+		botapi.ID(cq.Message.Chat.ID),
+		"Укажите вашу дату рождения.\n\n"+
 			"Формат свободный, например: 12.05.2004, 12 мая 2004 или 2004-05-12",
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return c.AnswerCallback()
 }
 
 func (h *Handler) ProcessBirthDate(c *botapi.Context) error {
