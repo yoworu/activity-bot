@@ -4,7 +4,6 @@ import (
 	"activity-bot/internal/roles"
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gotd/botapi"
 )
 
@@ -16,7 +15,6 @@ const (
 
 func regionKeyboard(categories []roles.Category) *botapi.InlineKeyboardMarkup {
 	buttons := make([]botapi.InlineKeyboardButton, 0, len(categories))
-	spew.Dump(categories)
 	for _, category := range categories {
 		if category.ID == 0 {
 			continue
@@ -28,7 +26,7 @@ func regionKeyboard(categories []roles.Category) *botapi.InlineKeyboardMarkup {
 		))
 	}
 
-	return keyboardRows(buttons, 2)
+	return keyboardRows(buttons, 1)
 }
 
 func roleKeyboard(available []roles.Role) *botapi.InlineKeyboardMarkup {
