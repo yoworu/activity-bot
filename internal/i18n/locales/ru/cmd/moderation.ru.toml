@@ -23,22 +23,22 @@ until = "до {{.Until}}"
 [cmd.moderation.actions.ban]
 male = "забанен"
 female =  "забанена"
-unknown = "забанен"
+unknown = "забанены"
 
 [cmd.moderation.actions.warn]
 male = "получил предупреждение"
 female = "получила предупреждение"
-unknown = "получил предупреждение"
+unknown = "получили предупреждение"
 
 [cmd.moderation.actions.mute]
 male = "замучен"
 female = "лишена права писать"
-unknown = "лишён права писать"
+unknown = "лишены права писать"
 
 [cmd.moderation.actions.kick]
 male = "исключён"
 female =  "исключена"
-unknown = "исключён"
+unknown = "исключены"
 
 
 [cmd.moderation.ban]

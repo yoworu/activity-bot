@@ -22,7 +22,7 @@ unknown = "{{.User}} установили имя пользователя {{.New
 [system.username_deleted]
 male = "{{.User}} удалил имя пользователя {{.OldUsername}} "
 female = "{{.User}} удалила имя пользователя {{.OldUsername}}"
-unknown = "{{.User}} удалил имя пользователя {{.OldUsername}}"
+unknown = "{{.User}} удалили имя пользователя {{.OldUsername}}"
 
 
 [system.gender]

@@ -7,15 +7,15 @@ joined = "Приветствуем нью {{.User}}!"
 [user.joined]
 male = "{{.User}} присоединился к чату"
 female = "{{.User}} присоединилась к чату"
-unknown = "{{.User}} присоединился к чату"
+unknown = "{{.User}} присоединились к чату"
 
 [user.returned]
 male = "{{.User}} вернулся в чат"
 female = "{{.User}} вернулась в чат"
-unknown = "{{.User}} вернулся в чат"
+unknown = "{{.User}} вернулись в чат"
 
 
 [user.left]
 male = "{{.User}} вышел из чата"
 female = "{{.User}} вышла из чата"
-unknown = "{{.User}} вышел из чата"
+unknown = "{{.User}} вышли из чата"
