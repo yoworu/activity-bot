@@ -151,6 +151,8 @@ func (h *Handler) SetGender(c *botapi.Context) error {
 		gender = user.GenderMale
 	case "f", "female", "ж", "женский":
 		gender = user.GenderFemale
+	case "u", "unknown", "н", "неизвестен":
+		gender = user.GenderUnknown
 	default:
 		return nil
 	}
