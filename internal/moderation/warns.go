@@ -68,6 +68,28 @@ func (h *Handler) Warn(c *botapi.Context) error {
 		return fmt.Errorf("service warn: %w", err)
 	}
 
+	loc := cctx.MustLocalizer(c)
+
+	_, err = c.Reply(
+		moderationMessage(
+			loc,
+			ch,
+			target,
+			moderator,
+			i18n.Cmd.Moderation.Actions.Warn,
+			until,
+			reason,
+			loc.T(
+				i18n.Cmd.Moderation.Templates.Warns,
+				i18n.CmdModerationTemplatesWarnsData{
+					Current: warnsCount,
+					Max:     ch.MaxWarns,
+				},
+			),
+		),
+		botapi.WithParseMode(botapi.ParseModeHTML),
+	)
+
 	if warnsCount >= ch.MaxWarns {
 		if err := h.service.Ban(c, ch.ID, target, moderator, until, reason); err != nil {
 			return fmt.Errorf("service auto ban: %w", err)
@@ -84,7 +106,7 @@ func (h *Handler) Warn(c *botapi.Context) error {
 
 		loc := cctx.MustLocalizer(c)
 
-		_, err := c.Reply(
+		_, err = c.Reply(
 			moderationMessage(
 				loc,
 				ch,
@@ -96,31 +118,7 @@ func (h *Handler) Warn(c *botapi.Context) error {
 			),
 			botapi.WithParseMode(botapi.ParseModeHTML),
 		)
-
-		return err
 	}
-
-	loc := cctx.MustLocalizer(c)
-
-	_, err = c.Reply(
-		moderationMessage(
-			loc,
-			ch,
-			target,
-			moderator,
-			i18n.Cmd.Moderation.Actions.Warn,
-			until,
-			reason,
-			loc.T(
-				i18n.Cmd.Moderation.Templates.Warns,
-				i18n.CmdModerationTemplatesWarnsData{
-					Current: warnsCount + 1,
-					Max:     ch.MaxWarns,
-				},
-			),
-		),
-		botapi.WithParseMode(botapi.ParseModeHTML),
-	)
 
 	return err
 }
