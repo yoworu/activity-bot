@@ -30,7 +30,7 @@ func appendUserList(b *strings.Builder, loc *i18n.Localizer, users []chatmember.
 	b.WriteByte('\n')
 }
 
-func RenderStats(loc *i18n.Localizer, data CalculatedStats, forceSimple bool) string {
+func RenderStats(loc *i18n.Localizer, ch chat.Chat, data CalculatedStats, forceSimple bool) string {
 	var b strings.Builder
 
 	b.WriteString(loc.T(
@@ -51,7 +51,7 @@ func RenderStats(loc *i18n.Localizer, data CalculatedStats, forceSimple bool) st
 				&b,
 				"%d. %s — %d",
 				i+1,
-				tghtml.MemberLinkCustom(loc, false, u.Member),
+				tghtml.MemberLink(loc, ch, u.Member),
 				u.Messages,
 			)
 
