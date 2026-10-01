@@ -1,9 +1,10 @@
 [cmd.rp]
 speech = "💬 Сказав: <i>\"{{.Text}}\"</i>"
 
-choose_gender = "Выберите ваш пол для выполнения команды:"
-gender_male = "♂ Мужской"
-gender_female = "♀ Женский"
+choose_gender = "Как к вам обращаться в рп командах?"
+gender_male = "он/его"
+gender_female = "она/её"
+gender_unknown = "они/их"
 
 [cmd.add_rp]
 desc = "Добавить рп команду"

@@ -12,12 +12,12 @@ canceled = "Действие отменено"
 [system.username_changed]
 male = "{{.User}} сменил имя пользователя {{.OldUsername}} ➜ {{.NewUsername}}"
 female = "{{.User}} сменила имя пользователя {{.OldUsername}} ➜ {{.NewUsername}}"
-unknown = "{{.User}} сменил имя пользователя {{.OldUsername}} ➜ {{.NewUsername}}"
+unknown = "{{.User}} сменили имя пользователя {{.OldUsername}} ➜ {{.NewUsername}}"
 
 [system.username_added]
 male = "{{.User}} установил имя пользователя {{.NewUsername}}"
 female = "{{.User}} установила имя пользователя {{.NewUsername}}"
-unknown = "{{.User}} установил имя пользователя {{.NewUsername}}"
+unknown = "{{.User}} установили имя пользователя {{.NewUsername}}"
 
 [system.username_deleted]
 male = "{{.User}} удалил имя пользователя {{.OldUsername}} "
