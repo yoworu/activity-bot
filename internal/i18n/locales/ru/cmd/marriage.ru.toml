@@ -121,6 +121,7 @@ unknown = "Без даты"
 [common.self]
 male = "сам с собой"
 female = "сама с собой"
+unknown = "сами с собой"
 
 [cmd.enable_polygamy]
 desc = "Разрешить несколько браков у участников"
