@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -569,6 +570,7 @@ func (h *Handler) ListMarriages(c *botapi.Context) error {
 		i18n.Cmd.Marriages.Category.Faience,
 		i18n.Cmd.Marriages.Category.Rose,
 	}
+	slices.Reverse(order)
 
 	var b strings.Builder
 
