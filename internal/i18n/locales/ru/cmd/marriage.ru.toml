@@ -118,8 +118,9 @@ rose = "Розовая свадьба"
 years = "{{.Years}}+ лет вместе"
 unknown = "Без даты"
 
-[common]
-self = "сам с собой"
+[common.self]
+male = "сам с собой"
+female = "сама с собой"
 
 [cmd.enable_polygamy]
 desc = "Разрешить несколько браков у участников"

@@ -598,7 +598,7 @@ func (h *Handler) ListMarriages(c *botapi.Context) error {
 			b.WriteString(" + ")
 
 			if m.User1.User.ID == m.User2.User.ID {
-				b.WriteString(loc.T(i18n.Common.Self, nil))
+				b.WriteString(loc.T(i18n.Common.Self, nil, i18n.WithGender(m.User1.Gender())))
 			} else {
 				b.WriteString(tghtml.MemberLink(loc, ch, m.User2))
 			}
