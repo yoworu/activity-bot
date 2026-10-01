@@ -585,7 +585,7 @@ func (h *Handler) ListMarriages(c *botapi.Context) error {
 		b.WriteString(" ")
 		b.WriteString(loc.T(category, nil))
 		b.WriteByte('\n')
-
+		b.WriteString("<blockquote expandable>")
 		for i, m := range items {
 			if i > 0 {
 				b.WriteByte('\n')
@@ -609,6 +609,7 @@ func (h *Handler) ListMarriages(c *botapi.Context) error {
 				b.WriteString(")")
 			}
 		}
+		b.WriteString("</blockquote>")
 
 		b.WriteString("\n\n")
 	}
