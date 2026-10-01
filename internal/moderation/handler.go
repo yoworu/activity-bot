@@ -206,7 +206,7 @@ func (h *Handler) Actions() []*command.Action {
 			i18n.Cmd.Moderation.ShowWarns.Desc,
 			CategoryModeration,
 			option.WithPermission(permission.StatusModerator),
-			option.WithAliases("показать варны", "варны"),
+			option.WithAliases("варны"),
 			option.WithRules(
 				rule.User().Optional(),
 			),
