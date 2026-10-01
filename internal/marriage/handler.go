@@ -710,7 +710,7 @@ func marriageCategory(marriedAt time.Time) i18n.MessageID {
 	case 10:
 		return i18n.Cmd.Marriages.Category.Rose
 	default:
-		return ""
+		return i18n.Cmd.Marriages.Category.Rose
 	}
 }
 func parseMarriageCallbackUserID(data string) (int64, error) {
