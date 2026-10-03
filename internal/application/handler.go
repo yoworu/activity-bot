@@ -267,7 +267,7 @@ func (h *Handler) SelectRole(c *botapi.Context) error {
 	_, err = c.Bot.SendMessage(
 		c,
 		botapi.ID(cq.Message.Chat.ID),
-		"Укажите вашу дату рождения",
+		"Укажите вашу дату рождения (год включительно)",
 	)
 	if err != nil {
 		return err
