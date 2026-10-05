@@ -14,14 +14,14 @@ import (
 	"activity-bot/internal/utils/tghtml"
 )
 
-func appendUserList(b *strings.Builder, loc *i18n.Localizer, users []chatmember.ChatMember) {
+func appendUserList(b *strings.Builder, ch chat.Chat, loc *i18n.Localizer, users []chatmember.ChatMember) {
 	var list strings.Builder
 
 	for i, m := range users {
 		list.WriteString(fmt.Sprintf(
 			"%d. %s",
 			i+1,
-			tghtml.MemberLinkCustom(loc, false, m),
+			tghtml.MemberLink(loc, ch, m),
 		))
 		list.WriteByte('\n')
 	}
@@ -85,7 +85,7 @@ func RenderStats(loc *i18n.Localizer, ch chat.Chat, data CalculatedStats, forceS
 						i18n.Cmd.Stats.UserFailed,
 						i18n.CmdStatsUserFailedData{
 							List:     i + 1,
-							User:     tghtml.MemberLinkCustom(loc, false, u.Member),
+							User:     tghtml.MemberLink(loc, ch, u.Member),
 							Messages: u.Messages,
 							Required: r.Required,
 						},
@@ -154,7 +154,7 @@ func RenderStats(loc *i18n.Localizer, ch chat.Chat, data CalculatedStats, forceS
 			))
 			b.WriteByte('\n')
 
-			appendUserList(&b, loc, data.RestMembers)
+			appendUserList(&b, ch, loc, data.RestMembers)
 			b.WriteByte('\n')
 		}
 
@@ -167,7 +167,7 @@ func RenderStats(loc *i18n.Localizer, ch chat.Chat, data CalculatedStats, forceS
 			))
 			b.WriteByte('\n')
 
-			appendUserList(&b, loc, data.NewbieMembers)
+			appendUserList(&b, ch, loc, data.NewbieMembers)
 			b.WriteByte('\n')
 		}
 	}
