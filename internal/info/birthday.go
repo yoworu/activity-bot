@@ -20,10 +20,12 @@ type BirthdaySeason struct {
 var birthdaySeasons = [...]struct {
 	Name   string
 	Months []int
-}{{Name: "winter", Months: []int{12, 1, 2}},
-	{Name: "spring", Months: []int{3, 4, 5}},
-	{Name: "summer", Months: []int{6, 7, 8}},
-	{Name: "autumn", Months: []int{9, 10, 11}}}
+}{
+	{Name: "𓂃 ࣪˖ ❄ winter 𓂃", Months: []int{12, 1, 2}},
+	{Name: "𓂃 ࣪˖ ❀ spring 𓂃", Months: []int{3, 4, 5}},
+	{Name: "𓂃 ࣪˖ ☼ summer 𓂃", Months: []int{6, 7, 8}},
+	{Name: "𓂃 ࣪˖ ❧ autumn 𓂃", Months: []int{9, 10, 11}},
+}
 
 func BuildBirthdaySeasons(members []chatmember.ChatMember) []BirthdaySeason {
 	seasons := make([]BirthdaySeason, len(birthdaySeasons))
