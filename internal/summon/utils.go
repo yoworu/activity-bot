@@ -176,7 +176,7 @@ func SendMessages(
 
 	inputPeer := peer.InputPeer()
 
-	for i, group := range groups {
+	for _, group := range groups {
 		if err := limiter.Wait(ctx); err != nil {
 			return err
 		}
@@ -190,12 +190,12 @@ func SendMessages(
 			mentionTypes,
 		)
 
-		if i == len(groups)-1 {
-			eb.Plain("\n\n")
-			eb.Plain(
-				loc.T(i18n.Cmd.Summon.Completed, nil),
-			)
-		}
+		//if i == len(groups)-1 {
+		//	eb.Plain("\n\n")
+		//	eb.Plain(
+		//		loc.T(i18n.Cmd.Summon.Completed, nil),
+		//	)
+		//}
 
 		finalText, entities := eb.Complete()
 
