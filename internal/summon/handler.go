@@ -60,15 +60,6 @@ func (h *Handler) Actions() []*command.Action {
 			),
 		),
 		action.NewCommand(
-			"summon",
-			h.SummonAll,
-			i18n.Cmd.Summon.Desc,
-			CategorySummon,
-			option.WithPermission(permission.StatusAdmin),
-			option.WithRules(rule.Text().Optional()),
-			option.WithAliases("call", "калл", "колл", "каллалл"),
-		),
-		action.NewCommand(
 			"summonnews",
 			h.SummonNews,
 			i18n.Cmd.Summon.Desc,
@@ -76,6 +67,16 @@ func (h *Handler) Actions() []*command.Action {
 			option.WithPermission(permission.StatusAdmin),
 			option.WithRules(rule.Duration().Optional(), rule.Text().Optional()),
 			option.WithAliases("калл нью"),
+		),
+
+		action.NewCommand(
+			"summon",
+			h.SummonAll,
+			i18n.Cmd.Summon.Desc,
+			CategorySummon,
+			option.WithPermission(permission.StatusAdmin),
+			option.WithRules(rule.Text().Optional()),
+			option.WithAliases("call", "калл", "колл", "каллалл"),
 		),
 
 		action.NewCommand(
