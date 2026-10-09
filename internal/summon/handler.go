@@ -66,7 +66,7 @@ func (h *Handler) Actions() []*command.Action {
 			CategorySummon,
 			option.WithPermission(permission.StatusAdmin),
 			option.WithRules(rule.Duration().Optional(), rule.Text().Optional()),
-			option.WithAliases("калл нью"),
+			option.WithAliases("калл нью", "каллнью"),
 		),
 
 		action.NewCommand(
