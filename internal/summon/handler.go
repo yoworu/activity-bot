@@ -10,6 +10,8 @@ import (
 	"activity-bot/internal/option"
 	"activity-bot/internal/permission"
 	"activity-bot/internal/rule"
+	"fmt"
+	"time"
 
 	fsm "github.com/fluffur/botapi-fsm"
 
@@ -65,6 +67,15 @@ func (h *Handler) Actions() []*command.Action {
 			option.WithPermission(permission.StatusAdmin),
 			option.WithRules(rule.Text().Optional()),
 			option.WithAliases("call", "калл", "колл", "каллалл"),
+		),
+		action.NewCommand(
+			"summonnews",
+			h.SummonNews,
+			i18n.Cmd.Summon.Desc,
+			CategorySummon,
+			option.WithPermission(permission.StatusAdmin),
+			option.WithRules(rule.Duration().Optional(), rule.Text().Optional()),
+			option.WithAliases("калл нью"),
 		),
 
 		action.NewCommand(
@@ -123,7 +134,7 @@ func (h *Handler) Actions() []*command.Action {
 			i18n.Cmd.SummonSpecific.Desc,
 			CategorySummon,
 			option.WithAliases("позвать", "призвать"),
-			option.WithRules(rule.User(), rule.Text().Optional()),
+			option.WithRules(rule.User().Variadic(), rule.Text().Optional()),
 			option.WithPermission(permission.StatusAdmin),
 		),
 	}
@@ -143,4 +154,35 @@ func (h *Handler) SummonSpecific(c *botapi.Context) error {
 	ch := cctx.MustChat(c)
 
 	return h.Summon(c, text, msg.MessageID, ch, users)
+}
+func (h *Handler) SummonNews(c *botapi.Context) error {
+	args := cctx.MustArgs(c)
+	ch := cctx.MustChat(c)
+
+	dur, ok := args.Duration()
+	if !ok {
+		dur, _ = time.ParseDuration(fmt.Sprintf("%dh", ch.NewbieThresholdDays*24))
+	}
+
+	text, _ := args.Text()
+	msg := c.Message()
+	if msg == nil {
+		return nil
+	}
+
+	members, err := h.chatMemberService.ListSummonChatMembers(c, ch.ID)
+	if err != nil {
+		return err
+	}
+
+	cutoff := time.Now().Add(-dur)
+
+	filtered := members[:0]
+	for _, member := range members {
+		if member.JoinedAt.After(cutoff) {
+			filtered = append(filtered, member)
+		}
+	}
+
+	return h.Summon(c, text, msg.MessageID, ch, filtered)
 }
