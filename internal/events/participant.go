@@ -143,6 +143,9 @@ func (h *Handler) processJoin(ctx context.Context, e tg.Entities, u *tg.UpdateCh
 			return fmt.Errorf("apply application role: %w", err)
 		}
 
+		if err := h.userRepo.SetBirthday(ctx, u.UserID, app.BirthDate); err != nil {
+			return fmt.Errorf("set application birth date: %w", err)
+		}
 		if err := h.memberService.SetEmoji(ctx, chatID, u.UserID, app.Role.Emoji); err != nil {
 			return fmt.Errorf("process join set emoji: %w", err)
 		}

@@ -6,6 +6,7 @@ import (
 	"activity-bot/internal/i18n"
 	"activity-bot/internal/info"
 	"activity-bot/internal/summon"
+	"activity-bot/internal/user"
 
 	"github.com/gotd/botapi"
 )
@@ -14,6 +15,7 @@ type Handler struct {
 	bot           *botapi.Bot
 	translator    *i18n.Translator
 	memberService *chatmember.Service
+	userRepo      user.Repository
 	updater       *info.Updater
 
 	applicationRepository *application.Repository
@@ -24,6 +26,7 @@ func NewHandler(
 	b *botapi.Bot,
 	t *i18n.Translator,
 	ms *chatmember.Service,
+	userRepo user.Repository,
 	roleUpdater *info.Updater,
 	applicationRepository *application.Repository,
 	summonHandler *summon.Handler,
@@ -32,6 +35,7 @@ func NewHandler(
 		bot:                   b,
 		translator:            t,
 		memberService:         ms,
+		userRepo:              userRepo,
 		updater:               roleUpdater,
 		applicationRepository: applicationRepository,
 		summonHandler:         summonHandler,

@@ -398,7 +398,8 @@ func (h *Handler) BirthDate(c *botapi.Context) error {
 			botapi.ID(cq.Message.Chat.ID),
 			cq.Message.MessageID,
 			fmt.Sprintf(
-				"Дата рождения: %s\n\nПеред отправкой заявки подтвердите, что вы ознакомились с %s",
+				"Роль: %s\nДата рождения: %s\n\nПеред отправкой заявки подтвердите, что вы ознакомились с %s",
+				sess.Data.Role.Name,
 				sess.Data.BirthDate,
 				tghtml.Link("https://t.me/H4venflood", "инфо флуда"),
 			),
@@ -474,11 +475,17 @@ func (h *Handler) ConfirmRules(c *botapi.Context) error {
 		return fmt.Errorf("application birth date is empty")
 	}
 
+	birthDate, err := time.Parse("02.01.2006", sess.Data.BirthDate)
+	if err != nil {
+		return fmt.Errorf("parse application birth date: %w", err)
+	}
+
 	app := Application{
-		UserID:   senderID,
-		ChatID:   h.targetChatID,
-		Role:     sess.Data.Role,
-		Username: username,
+		UserID:    senderID,
+		ChatID:    h.targetChatID,
+		Role:      sess.Data.Role,
+		Username:  username,
+		BirthDate: birthDate,
 	}
 
 	appID := strconv.FormatInt(senderID, 10)
