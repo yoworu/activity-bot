@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	fsm "github.com/fluffur/botapi-fsm"
 
@@ -249,87 +250,178 @@ func (h *Handler) SelectRole(c *botapi.Context) error {
 		c,
 		AppStateAwaitBirthDate,
 		AppStateData{
-			Role: foundRole,
+			CategoryID: sess.Data.CategoryID,
+			Role:       foundRole,
 		},
 	); err != nil {
 		return err
 	}
 
+	now := time.Now()
+
 	if _, err := c.Bot.EditMessageText(
 		c,
 		botapi.ID(cq.Message.Chat.ID),
 		cq.Message.MessageID,
-		fmt.Sprintf("Выбрана роль: %s", foundRole.Name),
+		fmt.Sprintf("Выбрана роль: %s\n\nВыберите год рождения", foundRole.Name),
+		botapi.WithReplyMarkup(yearKeyboard(defaultBirthYearDecade(now), now)),
 	); err != nil {
-		return fmt.Errorf("edit selected role: %w", err)
-	}
-
-	_, err = c.Bot.SendMessage(
-		c,
-		botapi.ID(cq.Message.Chat.ID),
-		"Укажите вашу дату рождения (год включительно)",
-	)
-	if err != nil {
-		return err
+		return fmt.Errorf("edit birth year keyboard: %w", err)
 	}
 
 	return c.AnswerCallback()
 }
 
-func (h *Handler) ProcessBirthDate(c *botapi.Context) error {
-	msg := c.Message()
-	if msg == nil {
+func (h *Handler) BirthDate(c *botapi.Context) error {
+	cq := c.Update.CallbackQuery
+	if cq == nil || cq.Message == nil {
 		return nil
+	}
+
+	step, err := parseBirthDateCallback(cq.Data)
+	if err != nil {
+		return fmt.Errorf("parse birth date: %w", err)
+	}
+
+	if step.Kind == birthDateNop {
+		return c.AnswerCallback()
 	}
 
 	sess, ok, err := h.appFSM.Get(c)
 	if err != nil {
 		return err
 	}
-
 	if !ok || sess.State != AppStateAwaitBirthDate {
-		return nil
-	}
-
-	birthDate := strings.TrimSpace(msg.Text)
-
-	if birthDate == "" {
-		_, err := c.Reply(
-			"Пожалуйста, укажите дату рождения.",
+		return c.AnswerCallback(
+			botapi.WithCallbackText("Сначала выберите роль"),
 		)
-		return err
 	}
 
-	sess.Data.BirthDate = birthDate
+	now := time.Now()
 
-	if err := h.appFSM.Enter(
-		c,
-		AppStateConfirmRules,
-		sess.Data,
-	); err != nil {
-		return err
-	}
+	switch step.Kind {
+	case birthDateRoles:
+		if err := h.appFSM.Enter(
+			c,
+			AppStateAwaitRole,
+			AppStateData{CategoryID: sess.Data.CategoryID},
+		); err != nil {
+			return err
+		}
 
-	_, err = c.Reply(
-		fmt.Sprintf(
-			"Дата рождения получена.\n\nПеред отправкой заявки подтвердите, что вы ознакомились с %s",
-			tghtml.Link("https://t.me/H4venflood", "инфо флуда"),
-		),
-		botapi.WithParseMode(botapi.ParseModeHTML),
-		botapi.DisableWebPagePreview(),
-		botapi.WithReplyMarkup(
-			botapi.InlineKeyboard(
-				botapi.InlineRow(
-					botapi.InlineButtonData(
-						"✅ Подтвердить",
-						"app:confirm_rules",
+		if err := h.refreshRoleKeyboard(c, sess.Data.CategoryID); err != nil {
+			return err
+		}
+
+		return c.AnswerCallback()
+
+	case birthDateYears:
+		decade := step.Decade
+		if decade == 0 {
+			decade = defaultBirthYearDecade(now)
+		}
+
+		if _, err := c.Bot.EditMessageText(
+			c,
+			botapi.ID(cq.Message.Chat.ID),
+			cq.Message.MessageID,
+			fmt.Sprintf("Выбрана роль: %s\n\nВыберите год рождения", sess.Data.Role.Name),
+			botapi.WithReplyMarkup(yearKeyboard(decade, now)),
+		); err != nil {
+			return fmt.Errorf("edit birth year keyboard: %w", err)
+		}
+
+		return c.AnswerCallback()
+
+	case birthDateMonths:
+		if step.Year < minBirthYear(now) || step.Year > maxBirthYear(now) {
+			return c.AnswerCallback(
+				botapi.WithCallbackText("Некорректный год"),
+			)
+		}
+
+		if _, err := c.Bot.EditMessageText(
+			c,
+			botapi.ID(cq.Message.Chat.ID),
+			cq.Message.MessageID,
+			fmt.Sprintf("Выбрана роль: %s\n\nВыберите месяц (%d)", sess.Data.Role.Name, step.Year),
+			botapi.WithReplyMarkup(monthKeyboard(step.Year)),
+		); err != nil {
+			return fmt.Errorf("edit birth month keyboard: %w", err)
+		}
+
+		return c.AnswerCallback()
+
+	case birthDateDays:
+		if !validBirthDate(step.Year, step.Month, 1, now) {
+			return c.AnswerCallback(
+				botapi.WithCallbackText("Некорректный месяц"),
+			)
+		}
+
+		if _, err := c.Bot.EditMessageText(
+			c,
+			botapi.ID(cq.Message.Chat.ID),
+			cq.Message.MessageID,
+			fmt.Sprintf(
+				"Выбрана роль: %s\n\nВыберите день (%s %d)",
+				sess.Data.Role.Name,
+				strings.ToLower(monthNames[step.Month]),
+				step.Year,
+			),
+			botapi.WithReplyMarkup(dayKeyboard(step.Year, step.Month)),
+		); err != nil {
+			return fmt.Errorf("edit birth day keyboard: %w", err)
+		}
+
+		return c.AnswerCallback()
+
+	case birthDatePick:
+		if !validBirthDate(step.Year, step.Month, step.Day, now) {
+			return c.AnswerCallback(
+				botapi.WithCallbackText("Некорректная дата"),
+			)
+		}
+
+		sess.Data.BirthDate = formatBirthDate(step.Year, step.Month, step.Day)
+
+		if err := h.appFSM.Enter(
+			c,
+			AppStateConfirmRules,
+			sess.Data,
+		); err != nil {
+			return err
+		}
+
+		if _, err := c.Bot.EditMessageText(
+			c,
+			botapi.ID(cq.Message.Chat.ID),
+			cq.Message.MessageID,
+			fmt.Sprintf(
+				"Дата рождения: %s\n\nПеред отправкой заявки подтвердите, что вы ознакомились с %s",
+				sess.Data.BirthDate,
+				tghtml.Link("https://t.me/H4venflood", "инфо флуда"),
+			),
+			botapi.WithParseMode(botapi.ParseModeHTML),
+			botapi.DisableWebPagePreview(),
+			botapi.WithReplyMarkup(
+				botapi.InlineKeyboard(
+					botapi.InlineRow(
+						botapi.InlineButtonData(
+							"✅ Подтвердить",
+							"app:confirm_rules",
+						),
 					),
 				),
 			),
-		),
-	)
+		); err != nil {
+			return fmt.Errorf("edit confirm rules: %w", err)
+		}
 
-	return err
+		return c.AnswerCallback()
+	}
+
+	return c.AnswerCallback()
 }
 
 func (h *Handler) ConfirmRules(c *botapi.Context) error {

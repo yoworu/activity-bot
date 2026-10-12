@@ -536,10 +536,9 @@ func runApplicationBot(
 		appFSM.State(application.AppStateAwaitRole),
 	)
 
-	bot.OnMessage(
-		appHandler.ProcessBirthDate,
-		appFSM.State(application.AppStateAwaitBirthDate),
-		botapi.ChatTypeIs(botapi.ChatTypePrivate),
+	bot.OnCallbackQuery(
+		appHandler.BirthDate,
+		botapi.CallbackPrefix("app:bd:"),
 	)
 
 	bot.OnCallbackQuery(
