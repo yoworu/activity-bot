@@ -336,6 +336,7 @@ func runBotInstance(
 		bot,
 		translator,
 		chatMemberService,
+		userRepository,
 		infoUpdater,
 		application.NewRepository(redisClient),
 		summonH,
