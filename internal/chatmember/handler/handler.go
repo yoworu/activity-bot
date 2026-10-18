@@ -222,20 +222,20 @@ func (h *Handler) UpdateChatMembers(c *botapi.Context) error {
 			fn   func() error
 		}{
 			{
-				name: "apply",
-				fn:   func() error { return h.updater.UpdateApplyPost(c.Background(), ch.ID, c.Bot) },
-			},
-			{
-				name: "rests",
-				fn:   func() error { return h.updater.UpdateRestsPost(c.Background(), ch.ID, c.Bot) },
-			},
-			{
 				name: "roles",
 				fn:   func() error { return h.updater.UpdateRolesPost(c.Background(), ch.ID, c.Bot) },
 			},
 			{
 				name: "birthdays",
 				fn:   func() error { return h.updater.UpdateBirthdaysPost(c.Background(), ch.ID, c.Bot) },
+			},
+			{
+				name: "apply",
+				fn:   func() error { return h.updater.UpdateApplyPost(c.Background(), ch.ID, c.Bot) },
+			},
+			{
+				name: "rests",
+				fn:   func() error { return h.updater.UpdateRestsPost(c.Background(), ch.ID, c.Bot) },
 			},
 		}
 
