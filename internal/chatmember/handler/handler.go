@@ -241,7 +241,7 @@ func (h *Handler) UpdateChatMembers(c *botapi.Context) error {
 
 		for i, update := range updates {
 			if i > 0 {
-				time.Sleep(time.Second)
+				time.Sleep(3 * time.Second)
 			}
 
 			if err := update.fn(); err != nil {
