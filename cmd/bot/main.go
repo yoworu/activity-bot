@@ -187,6 +187,7 @@ func main() {
 				log,
 				cfg,
 				redisClient,
+				userRepository,
 				chatMemberService,
 				rolesRepository,
 			); err != nil {
@@ -388,8 +389,8 @@ func registerMiddlewares(
 		middleware.IgnoreChannelsMiddleware(),
 		middleware.ChatMiddleware(chatRepository, pmSessionRepository),
 		middleware.LocalizationMiddleware(translator),
+		middleware.UserMiddleware(userRepository),
 		middleware.ChatMemberMiddleware(
-			userRepository,
 			chatMemberRepository,
 			events.NewUsernameChangedNotifier(chatMemberRepository, summonH),
 		),
@@ -433,6 +434,7 @@ func runApplicationBot(
 	log *zap.Logger,
 	cfg config.Config,
 	redisClient *redis.Client,
+	userRepository user.Repository,
 	chatMemberService *chatmember.Service,
 	rolesRepository roles.Repository,
 ) error {
@@ -496,6 +498,11 @@ func runApplicationBot(
 	if err != nil {
 		return fmt.Errorf("create application bot: %w", err)
 	}
+
+	bot.UseOuter(
+		middleware.IgnoreChannelsMiddleware(),
+		middleware.UserMiddleware(userRepository),
+	)
 
 	appHandler := application.NewHandler(
 		appFSM,

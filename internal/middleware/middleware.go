@@ -90,13 +90,14 @@ type UsernameChangedNotifier interface {
 	NotifyUsernameChanged(c *botapi.Context, oldUsername, newUsername string) error
 }
 
-func ChatMemberMiddleware(ur user.Repository, cmr chatmember.Repository, notifier UsernameChangedNotifier) botapi.Middleware {
+func ChatMemberMiddleware(
+	cmr chatmember.Repository,
+	notifier UsernameChangedNotifier,
+) botapi.Middleware {
 	return func(next botapi.Handler) botapi.Handler {
 		return func(c *botapi.Context) error {
-			sender := c.Sender()
 			msg := c.Message()
-
-			if msg == nil {
+			if msg == nil && c.Update.CallbackQuery != nil {
 				msg = c.Update.CallbackQuery.Message
 			}
 
@@ -104,10 +105,7 @@ func ChatMemberMiddleware(ur user.Repository, cmr chatmember.Repository, notifie
 				return next(c)
 			}
 
-			userModel, userChanged, err := getOrCreateUser(c, ur, sender, msg.Chat)
-			if err != nil {
-				return fmt.Errorf("chat member middleware get user: %w", err)
-			}
+			userModel := cctx.MustUser(c)
 
 			chatModel, err := cctx.Chat(c)
 			if err != nil {
@@ -131,11 +129,18 @@ func ChatMemberMiddleware(ur user.Repository, cmr chatmember.Repository, notifie
 
 			c.Context = cctx.WithChatMember(c.Context, member)
 
-			if userChanged.NewUsername != "" {
-				if err := notifier.NotifyUsernameChanged(c, userChanged.OldUsername, userChanged.NewUsername); err != nil {
-					log.For(c.Bot.Logger()).Error(c, "notify username changed", log.Error(err))
-
-					return next(c)
+			update := cctx.MustUserUpdate(c)
+			if update.NewUsername != "" {
+				if err := notifier.NotifyUsernameChanged(
+					c,
+					update.OldUsername,
+					update.NewUsername,
+				); err != nil {
+					log.For(c.Bot.Logger()).Error(
+						c,
+						"notify username changed",
+						log.Error(err),
+					)
 				}
 			}
 
@@ -214,17 +219,12 @@ func LocalizationMiddleware(t *i18n.Translator) botapi.Middleware {
 	}
 }
 
-type UserUpdate struct {
-	OldUsername string
-	NewUsername string
-}
-
 func getOrCreateUser(
 	ctx context.Context,
 	repo user.Repository,
 	sender *botapi.User,
 	c botapi.Chat,
-) (model user.User, userUpdate UserUpdate, err error) {
+) (model user.User, userUpdate user.UserUpdate, err error) {
 	var (
 		senderID                                        int64
 		senderUsername, senderFirstName, senderLastName string

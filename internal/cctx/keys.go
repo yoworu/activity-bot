@@ -6,6 +6,7 @@ import (
 	"activity-bot/internal/i18n"
 	"activity-bot/internal/permission"
 	"activity-bot/internal/rp"
+	"activity-bot/internal/user"
 	"context"
 	"fmt"
 
@@ -23,6 +24,8 @@ type (
 	localizerKey           struct{}
 	commandPrefixKey       struct{}
 	rpCommandDefinitionKey struct{}
+	userKey                struct{}
+	userUpdateKey          struct{}
 )
 
 func WithChat(ctx context.Context, ch chat.Chat) context.Context {
@@ -205,4 +208,29 @@ func MustRPCommand(ctx context.Context) rp.Definition {
 	}
 
 	return def
+}
+
+func WithUser(ctx context.Context, u user.User) context.Context {
+	return context.WithValue(ctx, userKey{}, u)
+}
+
+func MustUser(c *botapi.Context) user.User {
+	u, ok := c.Context.Value(userKey{}).(user.User)
+	if !ok {
+		panic("user not found in context")
+	}
+
+	return u
+}
+
+func WithUserUpdate(ctx context.Context, u user.UserUpdate) context.Context {
+	return context.WithValue(ctx, userUpdateKey{}, u)
+}
+
+func MustUserUpdate(c *botapi.Context) user.UserUpdate {
+	u, ok := c.Context.Value(userUpdateKey{}).(user.UserUpdate)
+	if !ok {
+		panic("userUpdate not found in context")
+	}
+	return u
 }

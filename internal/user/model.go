@@ -26,6 +26,11 @@ type User struct {
 	CreatedAt time.Time
 }
 
+type UserUpdate struct {
+	OldUsername string
+	NewUsername string
+}
+
 func New(id int64, firstName, lastName, username string, gender Gender, isBot bool, now time.Time) User {
 	return User{
 		ID:        id,
