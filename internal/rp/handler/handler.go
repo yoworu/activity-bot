@@ -387,10 +387,14 @@ func (h *Handler) ListRPCommand(c *botapi.Context) error {
 
 	var b strings.Builder
 	b.WriteString(loc.T(i18n.Cmd.ListRp.Title, nil))
-	b.WriteString("\n\n")
-	for _, item := range list {
-		b.WriteString(fmt.Sprintf("• <code>%s</code>\n", item.Trigger))
+	b.WriteString("\n<blockquote expandable>")
+	for i, item := range list {
+		b.WriteString(fmt.Sprintf("• <code>%s</code>", item.Trigger))
+		if i != len(list)-1 {
+			b.WriteString("\n")
+		}
 	}
+	b.WriteString("</blockquote>")
 
 	_, err = c.Reply(b.String(), botapi.WithParseMode(botapi.ParseModeHTML))
 	return err
