@@ -21,6 +21,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/gotd/botapi"
+	"github.com/gotd/log"
 )
 
 const CategoryChatMember command.Category = "chat_member"
@@ -191,11 +192,7 @@ func (h *Handler) UpdateChatMembers(c *botapi.Context) error {
 
 	chatMembers := chatmembers.ExtractMembers(members)
 
-	if err = h.service.SyncChatMembers(
-		c,
-		ch.ID,
-		chatMembers,
-	); err != nil {
+	if err = h.service.SyncChatMembers(c, ch.ID, chatMembers); err != nil {
 		return fmt.Errorf("update chat members: %w", err)
 	}
 
@@ -204,38 +201,62 @@ func (h *Handler) UpdateChatMembers(c *botapi.Context) error {
 		presentUsers[member.User.ID] = struct{}{}
 	}
 
-	if err := h.marriageService.DivorceInactiveMarriages(
-		c,
-		ch.ID,
-		presentUsers,
-	); err != nil {
+	if err := h.marriageService.DivorceInactiveMarriages(c, ch.ID, presentUsers); err != nil {
 		return fmt.Errorf("cleanup marriages: %w", err)
 	}
 
 	loc := cctx.MustLocalizer(c)
 
-	_, err = c.Reply(
+	if _, err := c.Reply(
 		loc.T(i18n.Cmd.ChatMember.Update.Success, nil),
 		botapi.WithParseMode(botapi.ParseModeHTML),
-	)
-
-	if err := h.updater.UpdateApplyPost(c, ch.ID, c.Bot); err != nil {
-		return fmt.Errorf("update apply: %w", err)
+	); err != nil {
+		return err
 	}
 
-	if err := h.updater.UpdateRestsPost(c, ch.ID, c.Bot); err != nil {
-		return fmt.Errorf("update rests: %w", err)
-	}
+	go func() {
+		ctx := c.Background()
 
-	if err := h.updater.UpdateRolesPost(c, ch.ID, c.Bot); err != nil {
-		return fmt.Errorf("update rests: %w", err)
-	}
+		updates := []struct {
+			name string
+			fn   func() error
+		}{
+			{
+				name: "apply",
+				fn:   func() error { return h.updater.UpdateApplyPost(c, ch.ID, c.Bot) },
+			},
+			{
+				name: "rests",
+				fn:   func() error { return h.updater.UpdateRestsPost(c, ch.ID, c.Bot) },
+			},
+			{
+				name: "roles",
+				fn:   func() error { return h.updater.UpdateRolesPost(c, ch.ID, c.Bot) },
+			},
+			{
+				name: "birthdays",
+				fn:   func() error { return h.updater.UpdateBirthdaysPost(c, ch.ID, c.Bot) },
+			},
+		}
 
-	if err := h.updater.UpdateBirthdaysPost(c, ch.ID, c.Bot); err != nil {
-		return fmt.Errorf("update birthdays: %w", err)
-	}
+		for i, update := range updates {
+			if i > 0 {
+				time.Sleep(time.Second)
+			}
 
-	return err
+			if err := update.fn(); err != nil {
+				log.For(c.Bot.Logger()).Error(
+					ctx,
+					"update post",
+					log.String("post", update.name),
+					log.Error(err),
+				)
+				return
+			}
+		}
+	}()
+
+	return nil
 }
 
 func (h *Handler) UpdateRoles(c *botapi.Context) error {
