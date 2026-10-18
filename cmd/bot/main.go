@@ -51,14 +51,13 @@ import (
 
 	"github.com/cohesion-org/deepseek-go"
 	fsm "github.com/fluffur/botapi-fsm"
+	"github.com/gotd/botapi"
+	"github.com/gotd/botapi/storage"
 	glog "github.com/gotd/log"
 	"github.com/gotd/log/logzap"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-
-	"github.com/gotd/botapi"
-	"github.com/gotd/botapi/storage"
 )
 
 func main() {
@@ -181,12 +180,14 @@ func main() {
 	}
 
 	if cfg.ApplicationBotToken != "" {
+		infoUpdater := info.NewUpdater(chatMemberRepository, rolesRepository, cfg.TargetChatID)
 		wg.Go(func() {
 			if err := runApplicationBot(
 				ctx,
 				log,
 				cfg,
 				redisClient,
+				infoUpdater,
 				userRepository,
 				chatMemberService,
 				rolesRepository,
@@ -434,6 +435,7 @@ func runApplicationBot(
 	log *zap.Logger,
 	cfg config.Config,
 	redisClient *redis.Client,
+	updater *info.Updater,
 	userRepository user.Repository,
 	chatMemberService *chatmember.Service,
 	rolesRepository roles.Repository,
@@ -510,6 +512,7 @@ func runApplicationBot(
 		chatMemberService,
 		application.NewRepository(redisClient),
 		rolesRepository,
+		updater,
 		cfg.TargetChatID,
 		cfg.ApplicationChatID,
 		cfg.TargetChatLink,

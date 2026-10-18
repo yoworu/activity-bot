@@ -2,6 +2,7 @@ package application
 
 import (
 	"activity-bot/internal/chatmember"
+	"activity-bot/internal/info"
 	"activity-bot/internal/roles"
 	"activity-bot/internal/utils/tghtml"
 	"fmt"
@@ -21,6 +22,7 @@ type Handler struct {
 	chatMemberService *chatmember.Service
 	repository        *Repository
 	rolesRepository   roles.Repository
+	updater           *info.Updater
 
 	targetChatID      int64
 	targetChatLink    string
@@ -34,6 +36,7 @@ func NewHandler(
 	chatMemberService *chatmember.Service,
 	repository *Repository,
 	rolesRepository roles.Repository,
+	updater *info.Updater,
 	targetChatID int64,
 	applicationChatID int64,
 	targetChatLink string,
@@ -44,6 +47,7 @@ func NewHandler(
 		rejectFSM:         rejectFSM,
 		chatMemberService: chatMemberService,
 		targetChatID:      targetChatID,
+		updater:           updater,
 		applicationChatID: applicationChatID,
 		rolesPostLink:     rolesPostLink,
 		targetChatLink:    targetChatLink,
@@ -892,6 +896,10 @@ func (h *Handler) acceptReservation(c *botapi.Context, application *Application)
 		botapi.ReplyTo(cq.Message.MessageID),
 	); err != nil {
 		return err
+	}
+
+	if err := h.updater.UpdateRolesPost(c, h.targetChatID, c.Bot); err != nil {
+		return fmt.Errorf("update roles post: %w", err)
 	}
 
 	return c.AnswerCallback(
