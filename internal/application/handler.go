@@ -66,13 +66,13 @@ func (h *Handler) Start(c *botapi.Context) error {
 
 	if err := h.appFSM.Enter(
 		c,
-		AppStateAwaitRole,
+		AppStateAwaitAction,
 		AppStateData{},
 	); err != nil {
 		return err
 	}
 
-	return h.sendRegionPrompt(c)
+	return h.sendActionPrompt(c)
 }
 
 func (h *Handler) StartCallback(c *botapi.Context) error {
@@ -83,7 +83,7 @@ func (h *Handler) StartCallback(c *botapi.Context) error {
 
 	if err := h.appFSM.Enter(
 		c,
-		AppStateAwaitRole,
+		AppStateAwaitAction,
 		AppStateData{},
 	); err != nil {
 		return err
@@ -99,7 +99,7 @@ func (h *Handler) StartCallback(c *botapi.Context) error {
 		return fmt.Errorf("remove old keyboard: %w", err)
 	}
 
-	if err := h.sendRegionPromptTo(c, cq.From.ID); err != nil {
+	if err := h.sendActionPromptTo(c, cq.From.ID); err != nil {
 		return err
 	}
 
@@ -108,6 +108,56 @@ func (h *Handler) StartCallback(c *botapi.Context) error {
 			"Можно отправить новую заявку",
 		),
 	)
+}
+
+func (h *Handler) ShowActions(c *botapi.Context) error {
+	cq := c.Update.CallbackQuery
+	if cq == nil {
+		return nil
+	}
+
+	chatID, _ := c.Chat()
+	chatIDInt := chatID.(botapi.ChatIDInt)
+
+	if err := h.appFSM.Enter(
+		c,
+		AppStateAwaitAction,
+		AppStateData{},
+	); err != nil {
+		return err
+	}
+
+	if err := h.editActionPrompt(c, int64(chatIDInt), cq.Message.MessageID); err != nil {
+		return err
+	}
+
+	return c.AnswerCallback()
+}
+
+func (h *Handler) SelectAction(c *botapi.Context) error {
+	cq := c.Update.CallbackQuery
+	if cq == nil || cq.Message == nil {
+		return nil
+	}
+
+	kind := KindJoin
+	if cq.Data == callbackActionReserve {
+		kind = KindReserve
+	}
+
+	if err := h.appFSM.Enter(
+		c,
+		AppStateAwaitRole,
+		AppStateData{Kind: kind},
+	); err != nil {
+		return err
+	}
+
+	if err := h.editRegionPrompt(c, cq.Message.Chat.ID, cq.Message.MessageID); err != nil {
+		return err
+	}
+
+	return c.AnswerCallback()
 }
 
 func (h *Handler) ShowRegions(c *botapi.Context) error {
@@ -166,10 +216,18 @@ func (h *Handler) SelectRegion(c *botapi.Context) error {
 		return err
 	}
 
+	kind := KindJoin
+	if sess, ok, err := h.appFSM.Get(c); err != nil {
+		return err
+	} else if ok {
+		kind = sess.Data.Kind
+	}
+
 	if err := h.appFSM.Enter(
 		c,
 		AppStateAwaitRole,
 		AppStateData{
+			Kind:       kind,
 			CategoryID: category.ID,
 		},
 	); err != nil {
@@ -250,6 +308,7 @@ func (h *Handler) SelectRole(c *botapi.Context) error {
 		c,
 		AppStateAwaitBirthDate,
 		AppStateData{
+			Kind:       sess.Data.Kind,
 			CategoryID: sess.Data.CategoryID,
 			Role:       foundRole,
 		},
@@ -304,7 +363,10 @@ func (h *Handler) BirthDate(c *botapi.Context) error {
 		if err := h.appFSM.Enter(
 			c,
 			AppStateAwaitRole,
-			AppStateData{CategoryID: sess.Data.CategoryID},
+			AppStateData{
+				Kind:       sess.Data.Kind,
+				CategoryID: sess.Data.CategoryID,
+			},
 		); err != nil {
 			return err
 		}
@@ -385,9 +447,85 @@ func (h *Handler) BirthDate(c *botapi.Context) error {
 
 		sess.Data.BirthDate = formatBirthDate(step.Year, step.Month, step.Day)
 
+		if sess.Data.isReserve() {
+			if err := h.appFSM.Enter(
+				c,
+				AppStateAwaitReserveUntil,
+				sess.Data,
+			); err != nil {
+				return err
+			}
+
+			if err := h.editReserveUntilPrompt(
+				c,
+				cq.Message.Chat.ID,
+				cq.Message.MessageID,
+				sess.Data,
+				now.Year(),
+				int(now.Month()),
+				now,
+			); err != nil {
+				return err
+			}
+
+			return c.AnswerCallback()
+		}
+
 		if err := h.appFSM.Enter(
 			c,
 			AppStateConfirmRules,
+			sess.Data,
+		); err != nil {
+			return err
+		}
+
+		if err := h.editConfirmRules(
+			c,
+			cq.Message.Chat.ID,
+			cq.Message.MessageID,
+			sess.Data,
+		); err != nil {
+			return err
+		}
+
+		return c.AnswerCallback()
+	}
+
+	return c.AnswerCallback()
+}
+
+func (h *Handler) ReserveUntil(c *botapi.Context) error {
+	cq := c.Update.CallbackQuery
+	if cq == nil || cq.Message == nil {
+		return nil
+	}
+
+	step, err := parseReserveUntilCallback(cq.Data)
+	if err != nil {
+		return fmt.Errorf("parse reserve until: %w", err)
+	}
+
+	if step.Kind == reserveUntilNop {
+		return c.AnswerCallback()
+	}
+
+	sess, ok, err := h.appFSM.Get(c)
+	if err != nil {
+		return err
+	}
+	if !ok || sess.State != AppStateAwaitReserveUntil {
+		return c.AnswerCallback(
+			botapi.WithCallbackText("Сначала выберите дату рождения"),
+		)
+	}
+
+	now := time.Now()
+
+	switch step.Kind {
+	case reserveUntilBack:
+		if err := h.appFSM.Enter(
+			c,
+			AppStateAwaitBirthDate,
 			sess.Data,
 		); err != nil {
 			return err
@@ -397,26 +535,53 @@ func (h *Handler) BirthDate(c *botapi.Context) error {
 			c,
 			botapi.ID(cq.Message.Chat.ID),
 			cq.Message.MessageID,
-			fmt.Sprintf(
-				"Роль: %s\nДата рождения: %s\n\nПеред отправкой заявки подтвердите, что вы ознакомились с %s",
-				sess.Data.Role.Name,
-				sess.Data.BirthDate,
-				tghtml.Link("https://t.me/H4venflood", "инфо флуда"),
-			),
-			botapi.WithParseMode(botapi.ParseModeHTML),
-			botapi.DisableWebPagePreview(),
-			botapi.WithReplyMarkup(
-				botapi.InlineKeyboard(
-					botapi.InlineRow(
-						botapi.InlineButtonData(
-							"✅ Подтвердить",
-							"app:confirm_rules",
-						),
-					),
-				),
-			),
+			fmt.Sprintf("Выбрана роль: %s\n\nВыберите год рождения", sess.Data.Role.Name),
+			botapi.WithReplyMarkup(yearKeyboard(defaultBirthYearDecade(now), now)),
 		); err != nil {
-			return fmt.Errorf("edit confirm rules: %w", err)
+			return fmt.Errorf("edit birth year keyboard: %w", err)
+		}
+
+		return c.AnswerCallback()
+
+	case reserveUntilMonth:
+		if err := h.editReserveUntilPrompt(
+			c,
+			cq.Message.Chat.ID,
+			cq.Message.MessageID,
+			sess.Data,
+			step.Year,
+			step.Month,
+			now,
+		); err != nil {
+			return err
+		}
+
+		return c.AnswerCallback()
+
+	case reserveUntilPick:
+		if !validReserveUntil(step.Year, step.Month, step.Day, now) {
+			return c.AnswerCallback(
+				botapi.WithCallbackText("Некорректный срок брони"),
+			)
+		}
+
+		sess.Data.ReserveUntil = formatReserveUntil(step.Year, step.Month, step.Day)
+
+		if err := h.appFSM.Enter(
+			c,
+			AppStateConfirmRules,
+			sess.Data,
+		); err != nil {
+			return err
+		}
+
+		if err := h.editConfirmRules(
+			c,
+			cq.Message.Chat.ID,
+			cq.Message.MessageID,
+			sess.Data,
+		); err != nil {
+			return err
 		}
 
 		return c.AnswerCallback()
@@ -480,15 +645,19 @@ func (h *Handler) ConfirmRules(c *botapi.Context) error {
 		return fmt.Errorf("parse application birth date: %w", err)
 	}
 
+	kind := sess.Data.Kind
+	if kind == "" {
+		kind = KindJoin
+	}
+
 	app := Application{
 		UserID:    senderID,
 		ChatID:    h.targetChatID,
+		Kind:      kind,
 		Role:      sess.Data.Role,
 		Username:  username,
 		BirthDate: birthDate,
 	}
-
-	appID := strconv.FormatInt(senderID, 10)
 
 	adminMsg := fmt.Sprintf(
 		"Новая заявка на вступление!\n\n"+
@@ -499,6 +668,32 @@ func (h *Handler) ConfirmRules(c *botapi.Context) error {
 		sess.Data.BirthDate,
 		userRef,
 	)
+
+	if sess.Data.isReserve() {
+		if sess.Data.ReserveUntil == "" {
+			return fmt.Errorf("application reserve until is empty")
+		}
+
+		reserveUntil, err := time.Parse("02.01.2006", sess.Data.ReserveUntil)
+		if err != nil {
+			return fmt.Errorf("parse application reserve until: %w", err)
+		}
+
+		app.ReserveUntil = reserveUntil
+		adminMsg = fmt.Sprintf(
+			"Новая заявка на бронирование роли!\n\n"+
+				"Роль: %s\n"+
+				"Дата рождения: %s\n"+
+				"Срок брони: до %s\n"+
+				"Пользователь: %s",
+			sess.Data.Role.Name,
+			sess.Data.BirthDate,
+			sess.Data.ReserveUntil,
+			userRef,
+		)
+	}
+
+	appID := strconv.FormatInt(senderID, 10)
 
 	keyboard := botapi.WithReplyMarkup(
 		botapi.InlineKeyboard(
@@ -579,6 +774,10 @@ func (h *Handler) Accept(c *botapi.Context) error {
 		return c.AnswerCallback()
 	}
 
+	if application.IsReserve() {
+		return h.acceptReservation(c, application)
+	}
+
 	_, err = c.Bot.SendMessage(
 		c,
 		botapi.ID(application.UserID),
@@ -621,6 +820,83 @@ func (h *Handler) Accept(c *botapi.Context) error {
 	return c.AnswerCallback(
 		botapi.WithCallbackText(
 			"Заявка принята",
+		),
+	)
+}
+
+func (h *Handler) acceptReservation(c *botapi.Context, application *Application) error {
+	cq := c.Update.CallbackQuery
+
+	available, err := h.availableRoles(c, []roles.Role{application.Role})
+	if err != nil {
+		return err
+	}
+	if len(available) == 0 {
+		return c.AnswerCallback(
+			botapi.WithCallbackText("Эта роль уже занята или забронирована"),
+		)
+	}
+
+	if err := h.rolesRepository.CreateRoleReservation(
+		c,
+		h.targetChatID,
+		application.UserID,
+		application.Role.ID,
+	); err != nil {
+		return fmt.Errorf("create role reservation: %w", err)
+	}
+
+	_, err = c.Bot.SendMessage(
+		c,
+		botapi.ID(application.UserID),
+		fmt.Sprintf(
+			"Ваша заявка на бронирование роли %s принята.\nСрок брони: до %s",
+			application.Role.Name,
+			application.ReserveUntil.Format("02.01.2006"),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("notify applicant: %w", err)
+	}
+
+	if err := h.appFSM.ClearByKey(
+		c.Background(),
+		application.UserID,
+	); err != nil {
+		return err
+	}
+
+	if err := h.repository.Delete(
+		c,
+		application.ChatID,
+		application.UserID,
+	); err != nil {
+		return err
+	}
+
+	if _, err := c.Bot.EditMessageReplyMarkup(
+		c,
+		botapi.ID(cq.Message.Chat.ID),
+		cq.Message.MessageID,
+		nil,
+	); err != nil {
+		return err
+	}
+
+	chatID, _ := c.Chat()
+
+	if _, err := c.Bot.SendMessage(
+		c,
+		chatID,
+		"Заявка на бронирование принята",
+		botapi.ReplyTo(cq.Message.MessageID),
+	); err != nil {
+		return err
+	}
+
+	return c.AnswerCallback(
+		botapi.WithCallbackText(
+			"Бронь принята",
 		),
 	)
 }
@@ -769,4 +1045,80 @@ func (h *Handler) RejectMessage(c *botapi.Context) error {
 	}
 
 	return err
+}
+
+func (h *Handler) editReserveUntilPrompt(
+	c *botapi.Context,
+	chatID int64,
+	messageID int,
+	data AppStateData,
+	year, month int,
+	now time.Time,
+) error {
+	_, err := c.Bot.EditMessageText(
+		c,
+		botapi.ID(chatID),
+		messageID,
+		fmt.Sprintf(
+			"Роль: %s\nДата рождения: %s\n\nВыберите срок брони (%s %d)",
+			data.Role.Name,
+			data.BirthDate,
+			strings.ToLower(monthNames[month]),
+			year,
+		),
+		botapi.WithReplyMarkup(reserveUntilKeyboard(year, month, now)),
+	)
+	if err != nil {
+		return fmt.Errorf("edit reserve until keyboard: %w", err)
+	}
+
+	return nil
+}
+
+func (h *Handler) editConfirmRules(
+	c *botapi.Context,
+	chatID int64,
+	messageID int,
+	data AppStateData,
+) error {
+	summary := fmt.Sprintf(
+		"Роль: %s\nДата рождения: %s",
+		data.Role.Name,
+		data.BirthDate,
+	)
+	if data.isReserve() {
+		summary = fmt.Sprintf(
+			"%s\nСрок брони: до %s",
+			summary,
+			data.ReserveUntil,
+		)
+	}
+
+	_, err := c.Bot.EditMessageText(
+		c,
+		botapi.ID(chatID),
+		messageID,
+		fmt.Sprintf(
+			"%s\n\nПеред отправкой заявки подтвердите, что вы ознакомились с %s",
+			summary,
+			tghtml.Link("https://t.me/H4venflood", "инфо флуда"),
+		),
+		botapi.WithParseMode(botapi.ParseModeHTML),
+		botapi.DisableWebPagePreview(),
+		botapi.WithReplyMarkup(
+			botapi.InlineKeyboard(
+				botapi.InlineRow(
+					botapi.InlineButtonData(
+						"✅ Подтвердить",
+						"app:confirm_rules",
+					),
+				),
+			),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("edit confirm rules: %w", err)
+	}
+
+	return nil
 }

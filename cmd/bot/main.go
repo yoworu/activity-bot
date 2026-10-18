@@ -529,6 +529,16 @@ func runApplicationBot(
 	)
 
 	bot.OnCallbackQuery(
+		appHandler.ShowActions,
+		botapi.CallbackData("app:actions"),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.SelectAction,
+		botapi.CallbackPrefix("app:kind:"),
+	)
+
+	bot.OnCallbackQuery(
 		appHandler.ShowRegions,
 		botapi.CallbackData("app:regions"),
 	)
@@ -547,6 +557,12 @@ func runApplicationBot(
 	bot.OnCallbackQuery(
 		appHandler.BirthDate,
 		botapi.CallbackPrefix("app:bd:"),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.ReserveUntil,
+		botapi.CallbackPrefix("app:ru:"),
+		appFSM.State(application.AppStateAwaitReserveUntil),
 	)
 
 	bot.OnCallbackQuery(

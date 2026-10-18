@@ -10,6 +10,41 @@ import (
 
 const genshinFandom = "Genshin Impact"
 
+func (h *Handler) sendActionPrompt(c *botapi.Context) error {
+	_, err := c.Reply(
+		"Выберите действие",
+		botapi.WithReplyMarkup(actionKeyboard()),
+	)
+
+	return err
+}
+
+func (h *Handler) sendActionPromptTo(c *botapi.Context, chatID int64) error {
+	_, err := c.Bot.SendMessage(
+		c,
+		botapi.ID(chatID),
+		"Выберите действие",
+		botapi.WithReplyMarkup(actionKeyboard()),
+	)
+
+	return err
+}
+
+func (h *Handler) editActionPrompt(c *botapi.Context, chatID int64, messageID int) error {
+	_, err := c.Bot.EditMessageText(
+		c,
+		botapi.ID(chatID),
+		messageID,
+		"Выберите действие",
+		botapi.WithReplyMarkup(actionKeyboard()),
+	)
+	if err != nil {
+		return fmt.Errorf("edit action keyboard: %w", err)
+	}
+
+	return nil
+}
+
 func (h *Handler) sendRegionPrompt(c *botapi.Context) error {
 	markup, err := h.regionMarkup(c)
 	if err != nil {

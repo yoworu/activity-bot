@@ -10,10 +10,30 @@ import (
 )
 
 const (
-	callbackRegionPrefix = "app:region:"
-	callbackRolePrefix   = "app:role:"
-	callbackRegions      = "app:regions"
+	callbackRegionPrefix  = "app:region:"
+	callbackRolePrefix    = "app:role:"
+	callbackRegions       = "app:regions"
+	callbackActions       = "app:actions"
+	callbackActionJoin    = "app:kind:join"
+	callbackActionReserve = "app:kind:reserve"
 )
+
+func actionKeyboard() *botapi.InlineKeyboardMarkup {
+	return botapi.InlineKeyboard(
+		botapi.InlineRow(
+			botapi.InlineButtonData(
+				"Вступить по флуд",
+				callbackActionJoin,
+			),
+		),
+		botapi.InlineRow(
+			botapi.InlineButtonData(
+				"Забронировать роль",
+				callbackActionReserve,
+			),
+		),
+	)
+}
 
 func regionKeyboard(categories []roles.Category) *botapi.InlineKeyboardMarkup {
 	buttons := make([]botapi.InlineKeyboardButton, 0, len(categories))
@@ -38,7 +58,18 @@ func regionKeyboard(categories []roles.Category) *botapi.InlineKeyboardMarkup {
 		buttons = append(buttons, data)
 	}
 
-	return keyboardRows(buttons, 2)
+	markup := keyboardRows(buttons, 2)
+	markup.InlineKeyboard = append(
+		markup.InlineKeyboard,
+		[]botapi.InlineKeyboardButton{
+			botapi.InlineButtonData(
+				"« Выбрать действие",
+				callbackActions,
+			),
+		},
+	)
+
+	return markup
 }
 
 func roleKeyboard(available []roles.Role) *botapi.InlineKeyboardMarkup {

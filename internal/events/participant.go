@@ -47,7 +47,7 @@ func (h *Handler) BotChatInviteRequester(
 		return fmt.Errorf("get application: %w", err)
 	}
 
-	if app == nil {
+	if app == nil || !app.IsJoin() {
 		return nil
 	}
 
@@ -133,7 +133,7 @@ func (h *Handler) processJoin(ctx context.Context, e tg.Entities, u *tg.UpdateCh
 	}
 	loc := h.translator.Localizer(res.ChatMember.Chat.Lang)
 
-	if app != nil {
+	if app != nil && app.IsJoin() {
 		if err := h.memberService.UpdateTag(
 			ctx,
 			chatID,
