@@ -34,6 +34,9 @@ func BuildBirthdaySeasons(members []chatmember.ChatMember) []BirthdaySeason {
 			continue
 		}
 		birthday := member.Birthday
+		if birthday.IsZero() {
+			birthday = member.Birthday
+		}
 		month := int(birthday.Month())
 		seasonIndex := (month % 12) / 3
 		seasons[seasonIndex].Members = append(seasons[seasonIndex].Members, BirthdayMember{Name: member.Display("", false), Day: birthday.Day(), Month: month})
