@@ -133,73 +133,112 @@ func main() {
 		go func(tkn string) {
 			defer wg.Done()
 
-			if err := runBotInstance(
-				ctx,
-				log,
-				cfg,
-
-				redisClient,
-				deepseekClient,
-				weatherClient,
-				translator,
-
-				tkn,
-
-				chatRepository,
-				userRepository,
-				chatMemberRepository,
-				messageRepository,
-				pmSessionRepository,
-				permissionRepository,
-				normRepository,
-				rpRepository,
-				rewardRepository,
-				rolesRepository,
-				banRepository,
-
-				chatService,
-				chatMemberService,
-				statsService,
-				restService,
-				marriageService,
-				moderationService,
-				crocodileService,
-
-				permissions,
-				rules,
-
-				loc,
-			); err != nil {
-				log.Error(
-					"Bot instance execution failed",
-					zap.String("bot_prefix", tkn[:8]),
-					zap.Error(err),
+			runWithRestart(ctx, log, tkn[:8], func() error {
+				return runBotInstance(
+					ctx,
+					log,
+					cfg,
+					redisClient,
+					deepseekClient,
+					weatherClient,
+					translator,
+					tkn,
+					chatRepository,
+					userRepository,
+					chatMemberRepository,
+					messageRepository,
+					pmSessionRepository,
+					permissionRepository,
+					normRepository,
+					rpRepository,
+					rewardRepository,
+					rolesRepository,
+					banRepository,
+					chatService,
+					chatMemberService,
+					statsService,
+					restService,
+					marriageService,
+					moderationService,
+					crocodileService,
+					permissions,
+					rules,
+					loc,
 				)
-			}
+			})
 		}(token)
 	}
 
 	if cfg.ApplicationBotToken != "" {
 		infoUpdater := info.NewUpdater(chatMemberRepository, rolesRepository, cfg.TargetChatID)
 		wg.Go(func() {
-			if err := runApplicationBot(
+			runWithRestart(
 				ctx,
 				log,
-				cfg,
-				redisClient,
-				infoUpdater,
-				userRepository,
-				chatMemberService,
-				rolesRepository,
-			); err != nil {
-				log.Error("Application bot failed", zap.Error(err))
-			}
+				cfg.ApplicationBotToken[:8],
+				func() error {
+					return runApplicationBot(
+						ctx,
+						log,
+						cfg,
+						redisClient,
+						infoUpdater,
+						userRepository,
+						chatMemberService,
+						rolesRepository,
+					)
+				},
+			)
 		})
 	}
 
 	log.Info("All bot instances successfully initialized and running")
 	wg.Wait()
 	log.Info("All bot instances gracefully stopped")
+}
+
+func runWithRestart(
+	ctx context.Context,
+	log *zap.Logger,
+	name string,
+	run func() error,
+) {
+	backoff := time.Second
+
+	for ctx.Err() == nil {
+		started := time.Now()
+		err := run()
+
+		if ctx.Err() != nil {
+			return
+		}
+
+		if time.Since(started) > time.Minute {
+			backoff = time.Second
+		}
+
+		log.Error(
+			"Bot stopped; restarting",
+			zap.String("bot", name),
+			zap.Error(err),
+			zap.Duration("uptime", time.Since(started)),
+			zap.Duration("retry_in", backoff),
+		)
+
+		timer := time.NewTimer(backoff)
+
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
+
+		backoff *= 2
+		if backoff > 30*time.Second {
+			backoff = 30 * time.Second
+		}
+	}
 }
 
 func runBotInstance(
