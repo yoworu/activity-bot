@@ -20,7 +20,7 @@ func (q *Queries) DeletePMSession(ctx context.Context, userID int64) error {
 }
 
 const getChatPMSession = `-- name: GetChatPMSession :one
-SELECT c.id, c.newbie_threshold_days, c.ai_system_prompt, c.max_ladder, c.call_on_join, c.welcome_call_message, c.week_start_day, c.max_warns, c.command_prefix, c.allow_prefixless, c.mentions_per_message, c.mention_types, c.title, c.tags_enabled, c.week_start_time, c.broadcast_enabled, c.removed_at, c.emojis_enabled, c.skip_call_confirmation, c.allow_polygamy, c.username_changed_notify_status
+SELECT c.id, c.newbie_threshold_days, c.ai_system_prompt, c.max_ladder, c.call_on_join, c.welcome_call_message, c.week_start_day, c.max_warns, c.command_prefix, c.allow_prefixless, c.mentions_per_message, c.mention_types, c.title, c.tags_enabled, c.week_start_time, c.broadcast_enabled, c.removed_at, c.emojis_enabled, c.skip_call_confirmation, c.allow_polygamy, c.username_changed_notify_status, c.created_at
 FROM user_pm_sessions
 JOIN chats c ON c.id = target_chat_id
 WHERE user_id = $1 LIMIT 1
@@ -55,6 +55,7 @@ func (q *Queries) GetChatPMSession(ctx context.Context, userID int64) (GetChatPM
 		&i.Chat.SkipCallConfirmation,
 		&i.Chat.AllowPolygamy,
 		&i.Chat.UsernameChangedNotifyStatus,
+		&i.Chat.CreatedAt,
 	)
 	return i, err
 }

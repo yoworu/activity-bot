@@ -185,6 +185,7 @@ type Chat struct {
 	SkipCallConfirmation        bool               `db:"skip_call_confirmation" json:"skipCallConfirmation"`
 	AllowPolygamy               bool               `db:"allow_polygamy" json:"allowPolygamy"`
 	UsernameChangedNotifyStatus int16              `db:"username_changed_notify_status" json:"usernameChangedNotifyStatus"`
+	CreatedAt                   pgtype.Timestamptz `db:"created_at" json:"createdAt"`
 }
 
 type ChatMember struct {

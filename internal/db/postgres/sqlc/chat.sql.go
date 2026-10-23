@@ -74,11 +74,11 @@ WITH ins AS (
             ON CONFLICT (id) DO
                 UPDATE
                 SET title = COALESCE(NULLIF(EXCLUDED.title, ''), chats.title)
-            RETURNING id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status)
-SELECT id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status
+            RETURNING id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status, created_at)
+SELECT id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status, created_at
 FROM ins
 UNION ALL
-SELECT id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status
+SELECT id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status, created_at
 FROM chats
 WHERE id = $1
 LIMIT 1
@@ -111,6 +111,7 @@ type EnsureChatExistsRow struct {
 	SkipCallConfirmation        bool               `db:"skip_call_confirmation" json:"skipCallConfirmation"`
 	AllowPolygamy               bool               `db:"allow_polygamy" json:"allowPolygamy"`
 	UsernameChangedNotifyStatus int16              `db:"username_changed_notify_status" json:"usernameChangedNotifyStatus"`
+	CreatedAt                   pgtype.Timestamptz `db:"created_at" json:"createdAt"`
 }
 
 func (q *Queries) EnsureChatExists(ctx context.Context, arg EnsureChatExistsParams) (EnsureChatExistsRow, error) {
@@ -138,12 +139,13 @@ func (q *Queries) EnsureChatExists(ctx context.Context, arg EnsureChatExistsPara
 		&i.SkipCallConfirmation,
 		&i.AllowPolygamy,
 		&i.UsernameChangedNotifyStatus,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getAllChats = `-- name: GetAllChats :many
-SELECT c.id, c.newbie_threshold_days, c.ai_system_prompt, c.max_ladder, c.call_on_join, c.welcome_call_message, c.week_start_day, c.max_warns, c.command_prefix, c.allow_prefixless, c.mentions_per_message, c.mention_types, c.title, c.tags_enabled, c.week_start_time, c.broadcast_enabled, c.removed_at, c.emojis_enabled, c.skip_call_confirmation, c.allow_polygamy, c.username_changed_notify_status
+SELECT c.id, c.newbie_threshold_days, c.ai_system_prompt, c.max_ladder, c.call_on_join, c.welcome_call_message, c.week_start_day, c.max_warns, c.command_prefix, c.allow_prefixless, c.mentions_per_message, c.mention_types, c.title, c.tags_enabled, c.week_start_time, c.broadcast_enabled, c.removed_at, c.emojis_enabled, c.skip_call_confirmation, c.allow_polygamy, c.username_changed_notify_status, c.created_at
 FROM chats c
 WHERE c.id < 0
   AND c.title <> ''
@@ -185,6 +187,7 @@ func (q *Queries) GetAllChats(ctx context.Context, title string) ([]Chat, error)
 			&i.SkipCallConfirmation,
 			&i.AllowPolygamy,
 			&i.UsernameChangedNotifyStatus,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -197,7 +200,7 @@ func (q *Queries) GetAllChats(ctx context.Context, title string) ([]Chat, error)
 }
 
 const getChat = `-- name: GetChat :one
-SELECT id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status
+SELECT id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status, created_at
 FROM chats
 WHERE id = $1
 `
@@ -227,12 +230,13 @@ func (q *Queries) GetChat(ctx context.Context, id int64) (Chat, error) {
 		&i.SkipCallConfirmation,
 		&i.AllowPolygamy,
 		&i.UsernameChangedNotifyStatus,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getChatByID = `-- name: GetChatByID :one
-SELECT id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status
+SELECT id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status, created_at
 FROM chats
 WHERE id = $1
 LIMIT 1
@@ -263,6 +267,7 @@ func (q *Queries) GetChatByID(ctx context.Context, id int64) (Chat, error) {
 		&i.SkipCallConfirmation,
 		&i.AllowPolygamy,
 		&i.UsernameChangedNotifyStatus,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -282,7 +287,7 @@ func (q *Queries) GetChatMaxLadder(ctx context.Context, chatID int64) (int32, er
 }
 
 const getChatsWithEnabledBroadcast = `-- name: GetChatsWithEnabledBroadcast :many
-SELECT c.id, c.newbie_threshold_days, c.ai_system_prompt, c.max_ladder, c.call_on_join, c.welcome_call_message, c.week_start_day, c.max_warns, c.command_prefix, c.allow_prefixless, c.mentions_per_message, c.mention_types, c.title, c.tags_enabled, c.week_start_time, c.broadcast_enabled, c.removed_at, c.emojis_enabled, c.skip_call_confirmation, c.allow_polygamy, c.username_changed_notify_status
+SELECT c.id, c.newbie_threshold_days, c.ai_system_prompt, c.max_ladder, c.call_on_join, c.welcome_call_message, c.week_start_day, c.max_warns, c.command_prefix, c.allow_prefixless, c.mentions_per_message, c.mention_types, c.title, c.tags_enabled, c.week_start_time, c.broadcast_enabled, c.removed_at, c.emojis_enabled, c.skip_call_confirmation, c.allow_polygamy, c.username_changed_notify_status, c.created_at
 FROM chats c
 WHERE c.id < 0
   AND c.title <> ''
@@ -320,6 +325,7 @@ func (q *Queries) GetChatsWithEnabledBroadcast(ctx context.Context) ([]Chat, err
 			&i.SkipCallConfirmation,
 			&i.AllowPolygamy,
 			&i.UsernameChangedNotifyStatus,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -332,7 +338,7 @@ func (q *Queries) GetChatsWithEnabledBroadcast(ctx context.Context) ([]Chat, err
 }
 
 const getChatsWithoutTitle = `-- name: GetChatsWithoutTitle :many
-SELECT id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status
+SELECT id, newbie_threshold_days, ai_system_prompt, max_ladder, call_on_join, welcome_call_message, week_start_day, max_warns, command_prefix, allow_prefixless, mentions_per_message, mention_types, title, tags_enabled, week_start_time, broadcast_enabled, removed_at, emojis_enabled, skip_call_confirmation, allow_polygamy, username_changed_notify_status, created_at
 FROM chats
 WHERE title = ''
   AND id < 0
@@ -370,6 +376,7 @@ func (q *Queries) GetChatsWithoutTitle(ctx context.Context) ([]Chat, error) {
 			&i.SkipCallConfirmation,
 			&i.AllowPolygamy,
 			&i.UsernameChangedNotifyStatus,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -382,7 +389,7 @@ func (q *Queries) GetChatsWithoutTitle(ctx context.Context) ([]Chat, error) {
 }
 
 const getUserManagedChats = `-- name: GetUserManagedChats :many
-SELECT c.id, c.newbie_threshold_days, c.ai_system_prompt, c.max_ladder, c.call_on_join, c.welcome_call_message, c.week_start_day, c.max_warns, c.command_prefix, c.allow_prefixless, c.mentions_per_message, c.mention_types, c.title, c.tags_enabled, c.week_start_time, c.broadcast_enabled, c.removed_at, c.emojis_enabled, c.skip_call_confirmation, c.allow_polygamy, c.username_changed_notify_status
+SELECT c.id, c.newbie_threshold_days, c.ai_system_prompt, c.max_ladder, c.call_on_join, c.welcome_call_message, c.week_start_day, c.max_warns, c.command_prefix, c.allow_prefixless, c.mentions_per_message, c.mention_types, c.title, c.tags_enabled, c.week_start_time, c.broadcast_enabled, c.removed_at, c.emojis_enabled, c.skip_call_confirmation, c.allow_polygamy, c.username_changed_notify_status, c.created_at
 FROM chats c
          JOIN chat_members cm ON c.id = cm.chat_id
 WHERE c.id < 0
@@ -428,6 +435,7 @@ func (q *Queries) GetUserManagedChats(ctx context.Context, arg GetUserManagedCha
 			&i.SkipCallConfirmation,
 			&i.AllowPolygamy,
 			&i.UsernameChangedNotifyStatus,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
