@@ -30,13 +30,15 @@ var birthdaySeasons = [...]struct {
 func BuildBirthdaySeasons(members []chatmember.ChatMember) []BirthdaySeason {
 	seasons := make([]BirthdaySeason, len(birthdaySeasons))
 	for _, member := range members {
-		if member.IsLeft() || member.Birthday.IsZero() {
-			continue
-		}
+
 		birthday := member.Birthday
 		if birthday.IsZero() {
 			birthday = member.User.Birthday
 		}
+		if member.IsLeft() || birthday.IsZero() {
+			continue
+		}
+
 		month := int(birthday.Month())
 		seasonIndex := (month % 12) / 3
 		seasons[seasonIndex].Members = append(seasons[seasonIndex].Members, BirthdayMember{Name: member.Display("", false), Day: birthday.Day(), Month: month})
