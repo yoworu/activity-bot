@@ -31,6 +31,7 @@ func mapUser(u db.User) user.User {
 		Emojis:    u.Emoji.String,
 		IsBot:     u.IsBot,
 		CreatedAt: u.CreatedAt.Time,
+		Birthday:  u.Birthday.Time,
 	}
 }
 

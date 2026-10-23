@@ -24,6 +24,7 @@ type User struct {
 	Emojis    string
 	IsBot     bool
 	CreatedAt time.Time
+	Birthday  time.Time
 }
 
 type UserUpdate struct {
