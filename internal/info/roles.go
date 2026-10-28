@@ -29,7 +29,7 @@ type RenderRole struct {
 	Status string
 }
 
-const rolesTemplate = `{{.Header}}
+const rolesTemplate = `<tg-emoji emoji-id="5328290823454867098">🌿</tg-emoji>{{.Header}}
 {{range .Categories -}}
 {{.Name}}
 <blockquote expandable>{{.Text}}</blockquote>
