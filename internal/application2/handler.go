@@ -507,8 +507,9 @@ func (h *Handler) Accept(c *botapi.Context) error {
 	}
 
 	text := "Ваша заявка принята, добро пожаловать!"
-	if h.targetChatLink != "" {
-		text = fmt.Sprintf("%s\n%s", text, h.targetChatLink)
+
+	if link := strings.TrimSpace(h.targetChatLink); link != "" {
+		text = fmt.Sprintf("%s\n%s", text, link)
 	}
 
 	if _, err := c.Bot.SendMessage(
