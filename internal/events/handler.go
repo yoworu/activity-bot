@@ -2,6 +2,7 @@ package events
 
 import (
 	"activity-bot/internal/application"
+	"activity-bot/internal/application2"
 	"activity-bot/internal/chatmember"
 	"activity-bot/internal/i18n"
 	"activity-bot/internal/info"
@@ -18,8 +19,9 @@ type Handler struct {
 	userRepo      user.Repository
 	updater       *info.Updater
 
-	applicationRepository *application.Repository
-	summonHandler         *summon.Handler
+	applicationRepository  *application.Repository
+	application2Repository *application2.Repository
+	summonHandler          *summon.Handler
 }
 
 func NewHandler(
@@ -29,16 +31,18 @@ func NewHandler(
 	userRepo user.Repository,
 	roleUpdater *info.Updater,
 	applicationRepository *application.Repository,
+	application2Repository *application2.Repository,
 	summonHandler *summon.Handler,
 ) *Handler {
 	return &Handler{
-		bot:                   b,
-		translator:            t,
-		memberService:         ms,
-		userRepo:              userRepo,
-		updater:               roleUpdater,
-		applicationRepository: applicationRepository,
-		summonHandler:         summonHandler,
+		bot:                    b,
+		translator:             t,
+		memberService:          ms,
+		userRepo:               userRepo,
+		updater:                roleUpdater,
+		applicationRepository:  applicationRepository,
+		application2Repository: application2Repository,
+		summonHandler:          summonHandler,
 	}
 }
 

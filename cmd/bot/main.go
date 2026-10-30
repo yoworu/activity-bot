@@ -205,10 +205,8 @@ func main() {
 						log,
 						cfg,
 						redisClient,
-						translator,
 						userRepository,
 						chatMemberService,
-						chatService,
 						rolesRepository,
 					)
 				},
@@ -404,6 +402,7 @@ func runBotInstance(
 		userRepository,
 		infoUpdater,
 		application.NewRepository(redisClient),
+		application2.NewRepository(redisClient),
 		summonH,
 	).Attach()
 
@@ -664,10 +663,8 @@ func runApplication2Bot(
 	log *zap.Logger,
 	cfg config.Config,
 	redisClient *redis.Client,
-	translator *i18n.Translator,
 	userRepository user.Repository,
 	chatMemberService *chatmember.Service,
-	chatService *chat.Service,
 	rolesRepository roles.Repository,
 ) error {
 	botKey := cfg.Application2BotToken[:8]
@@ -716,16 +713,6 @@ func runApplication2Bot(
 		application2.RejectStateIdle,
 	)
 
-	summonFSM := fsm.NewRedisFSM[
-		summon.State,
-		summon.StateData,
-	](
-		redisClient,
-		fmt.Sprintf("fsm:%s:summon:", botKey),
-		5*time.Hour,
-		summon.StateIdle,
-	)
-
 	var bot *botapi.Bot
 
 	bot, err = botapi.New(cfg.Application2BotToken, botapi.Options{
@@ -759,21 +746,6 @@ func runApplication2Bot(
 		cfg.Application2ChatID,
 		cfg.Target2ChatLink,
 	)
-
-	summonHandler := summon.NewHandler(
-		chatService,
-		chatMemberService,
-		summonFSM,
-	)
-
-	application2.NewJoinHandler(
-		bot,
-		translator,
-		chatMemberService,
-		userRepository,
-		repository,
-		summonHandler,
-	).Attach()
 
 	bot.OnCommand(
 		"start",

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"activity-bot/internal/application2"
+	"activity-bot/internal/chatmember"
 	"activity-bot/internal/i18n"
 	"activity-bot/internal/user"
 	"activity-bot/internal/utils/chatmembers"
@@ -20,7 +22,7 @@ import (
 
 func (h *Handler) BotChatInviteRequester(
 	ctx context.Context,
-	e tg.Entities,
+	_ tg.Entities,
 	update *tg.UpdateBotChatInviteRequester,
 ) error {
 	peer, ok := update.Peer.(*tg.PeerChannel)
@@ -28,13 +30,8 @@ func (h *Handler) BotChatInviteRequester(
 		return nil
 	}
 
-	channel, ok := e.Channels[peer.ChannelID]
-	if !ok {
-		return fmt.Errorf("channel not found")
-	}
-
 	var peerID constant.TDLibPeerID
-	peerID.Channel(channel.ID)
+	peerID.Channel(peer.ChannelID)
 
 	chatID := int64(peerID)
 	app, err := h.applicationRepository.Get(
@@ -42,22 +39,40 @@ func (h *Handler) BotChatInviteRequester(
 		chatID,
 		update.UserID,
 	)
-
 	if err != nil {
 		return fmt.Errorf("get application: %w", err)
 	}
 
-	if app == nil || !app.IsJoin() {
+	if app != nil && app.IsJoin() {
+		if err := h.bot.ApproveChatJoinRequest(
+			ctx,
+			botapi.ID(chatID),
+			update.UserID,
+		); err != nil {
+			return fmt.Errorf("approve join request: %w", err)
+		}
+
 		return nil
 	}
 
-	err = h.bot.ApproveChatJoinRequest(
+	app2, err := h.application2Repository.Get(
+		ctx,
+		chatID,
+		update.UserID,
+	)
+	if err != nil {
+		return fmt.Errorf("get application2: %w", err)
+	}
+
+	if app2 == nil {
+		return nil
+	}
+
+	if err := h.bot.ApproveChatJoinRequest(
 		ctx,
 		botapi.ID(chatID),
 		update.UserID,
-	)
-
-	if err != nil {
+	); err != nil {
 		return fmt.Errorf("approve join request: %w", err)
 	}
 
@@ -211,6 +226,19 @@ func (h *Handler) processJoin(ctx context.Context, e tg.Entities, u *tg.UpdateCh
 		return nil
 	}
 
+	app2, err := h.application2Repository.Get(
+		ctx,
+		chatID,
+		u.UserID,
+	)
+	if err != nil {
+		return fmt.Errorf("get application2 on join: %w", err)
+	}
+
+	if app2 != nil {
+		return h.processApplication2Join(ctx, chatID, u.UserID, res, app2)
+	}
+
 	if res.IsNew && participant.IsSelf(u.NewParticipant) {
 		members, err := participant.GetChatMembers(h.bot, ctx, u.ChannelID)
 		if err != nil {
@@ -326,6 +354,82 @@ func (h *Handler) processLeft(ctx context.Context, u *tg.UpdateChannelParticipan
 	}
 
 	return err
+}
+
+func (h *Handler) processApplication2Join(
+	ctx context.Context,
+	chatID int64,
+	userID int64,
+	res chatmember.JoinResult,
+	app *application2.Application,
+) error {
+	if err := h.memberService.UpdateTag(
+		ctx,
+		chatID,
+		userID,
+		app.Role.Name,
+	); err != nil {
+		return fmt.Errorf("apply application2 role: %w", err)
+	}
+
+	if err := h.memberService.SetEmoji(
+		ctx,
+		chatID,
+		userID,
+		app.Role.Emoji,
+	); err != nil {
+		return fmt.Errorf("process application2 join set emoji: %w", err)
+	}
+
+	if err := setMemberTagRetry(ctx, h.bot, chatID, userID, app.Role.Name); err != nil {
+		return fmt.Errorf("process application2 join set tag: %w", err)
+	}
+
+	cms, err := h.memberService.ListSummonChatMembers(ctx, chatID)
+	if err != nil {
+		return fmt.Errorf("get members for application2 summon: %w", err)
+	}
+
+	loc := h.translator.Localizer(res.ChatMember.Chat.Lang)
+	role := strings.TrimSpace(app.Role.Emoji + " " + app.Role.Name)
+
+	var (
+		key  i18n.MessageID
+		data any
+		opts []i18n.LocalizeOption
+	)
+
+	if res.IsNew {
+		key = i18n.User.Apply.Joined
+		data = i18n.UserApplyJoinedData{
+			User: role,
+		}
+	} else {
+		key = i18n.User.Returned
+		data = i18n.UserReturnedData{
+			User: role,
+		}
+		opts = append(opts, i18n.WithGender(res.ChatMember.Gender()))
+	}
+
+	if err := h.summonHandler.RunSummon(
+		ctx,
+		h.bot,
+		loc,
+		chatID,
+		0,
+		loc.T(key, data, opts...),
+		res.ChatMember.Chat,
+		cms,
+	); err != nil {
+		return fmt.Errorf("run application2 summon: %w", err)
+	}
+
+	if err := h.application2Repository.Delete(ctx, chatID, userID); err != nil {
+		return fmt.Errorf("delete application2: %w", err)
+	}
+
+	return nil
 }
 
 func setMemberTagRetry(
