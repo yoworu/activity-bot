@@ -111,7 +111,7 @@ func (h *Handler) ParticipantUpdate(ctx context.Context, e tg.Entities, u *tg.Up
 			return fmt.Errorf("participant update tag: %w", err)
 		}
 
-		if err := h.updater.UpdateRolesPost(ctx, chatID, h.bot); err != nil {
+		if err := h.updateRolesPosts(ctx, chatID); err != nil {
 			return fmt.Errorf("participant update: %w", err)
 		}
 	}
@@ -168,11 +168,7 @@ func (h *Handler) processJoin(ctx context.Context, e tg.Entities, u *tg.UpdateCh
 			return fmt.Errorf("process join set tag: %w", err)
 		}
 
-		if err := h.updater.UpdateRolesPost(
-			ctx,
-			chatID,
-			h.bot,
-		); err != nil {
+		if err := h.updateRolesPosts(ctx, chatID); err != nil {
 			return fmt.Errorf("update roles after application: %w", err)
 		}
 
@@ -345,8 +341,8 @@ func (h *Handler) processLeft(ctx context.Context, u *tg.UpdateChannelParticipan
 		return fmt.Errorf("update rests: %w", err)
 	}
 
-	if err := h.updater.UpdateRolesPost(ctx, chatID, h.bot); err != nil {
-		return fmt.Errorf("update rests: %w", err)
+	if err := h.updateRolesPosts(ctx, chatID); err != nil {
+		return fmt.Errorf("update roles: %w", err)
 	}
 
 	if err := h.updater.UpdateBirthdaysPost(ctx, chatID, h.bot); err != nil {
@@ -423,6 +419,10 @@ func (h *Handler) processApplication2Join(
 		cms,
 	); err != nil {
 		return fmt.Errorf("run application2 summon: %w", err)
+	}
+
+	if err := h.updateRolesPosts(ctx, chatID); err != nil {
+		return fmt.Errorf("update application2 roles post: %w", err)
 	}
 
 	if err := h.application2Repository.Delete(ctx, chatID, userID); err != nil {

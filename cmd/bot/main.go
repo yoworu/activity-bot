@@ -335,6 +335,20 @@ func runBotInstance(
 	)
 	infoUpdater := info.NewUpdater(chatMemberRepository, rolesRepository, cfg.TargetChatID)
 
+	var application2Updater *info.Updater
+
+	if cfg.Target2ChatID != 0 && strings.TrimSpace(cfg.Target2RolesPostLink) != "" {
+		application2Updater, err = info.NewUpdaterForRolesPost(
+			chatMemberRepository,
+			rolesRepository,
+			cfg.Target2ChatID,
+			cfg.Target2RolesPostLink,
+		)
+		if err != nil {
+			return fmt.Errorf("create application2 info updater: %w", err)
+		}
+	}
+
 	registry := command.NewRegistry()
 	summonH := summon.NewHandler(chatService, chatMemberService, summonFSM)
 	handlers := []handler.Handler{
@@ -401,6 +415,7 @@ func runBotInstance(
 		chatMemberService,
 		userRepository,
 		infoUpdater,
+		application2Updater,
 		application.NewRepository(redisClient),
 		application2.NewRepository(redisClient),
 		summonH,

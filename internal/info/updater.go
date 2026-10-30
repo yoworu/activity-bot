@@ -5,6 +5,8 @@ import (
 	"activity-bot/internal/roles"
 	"context"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/gotd/botapi"
@@ -14,7 +16,14 @@ type Updater struct {
 	repo         chatmember.Repository
 	rolesRepo    roles.Repository
 	targetChatID int64
+
+	rolesPostUsername string
+	rolesPostID       int
+
+	rolesPostNavigationURL string
 }
+
+const defaultNavigationURL = "https://t.me/h4venflood/34"
 
 func NewUpdater(
 	repo chatmember.Repository,
@@ -22,10 +31,65 @@ func NewUpdater(
 	targetChatID int64,
 ) *Updater {
 	return &Updater{
-		repo:         repo,
-		rolesRepo:    rolesRepo,
-		targetChatID: targetChatID,
+		repo:                   repo,
+		rolesRepo:              rolesRepo,
+		targetChatID:           targetChatID,
+		rolesPostUsername:      "h4venflood",
+		rolesPostID:            41,
+		rolesPostNavigationURL: defaultNavigationURL,
 	}
+}
+
+func NewUpdaterForRolesPost(
+	repo chatmember.Repository,
+	rolesRepo roles.Repository,
+	targetChatID int64,
+	postLink string,
+) (*Updater, error) {
+	username, messageID, err := ParsePostLink(postLink)
+	if err != nil {
+		return nil, fmt.Errorf("parse roles post link: %w", err)
+	}
+
+	updater := NewUpdater(repo, rolesRepo, targetChatID)
+	updater.rolesPostUsername = username
+	updater.rolesPostID = messageID
+	updater.rolesPostNavigationURL = ""
+
+	return updater, nil
+}
+
+func ParsePostLink(link string) (string, int, error) {
+	link = strings.TrimSpace(link)
+	if link == "" {
+		return "", 0, fmt.Errorf("post link is empty")
+	}
+
+	if !strings.Contains(link, "://") {
+		link = "https://" + link
+	}
+
+	parsed, err := url.Parse(link)
+	if err != nil {
+		return "", 0, fmt.Errorf("parse url: %w", err)
+	}
+
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) != 2 {
+		return "", 0, fmt.Errorf("invalid post link %q", link)
+	}
+
+	username := strings.TrimPrefix(parts[0], "@")
+	if username == "" {
+		return "", 0, fmt.Errorf("post link username is empty")
+	}
+
+	messageID, err := strconv.Atoi(parts[1])
+	if err != nil || messageID <= 0 {
+		return "", 0, fmt.Errorf("invalid post message id %q", parts[1])
+	}
+
+	return username, messageID, nil
 }
 
 func (r *Updater) UpdateRolesPost(c context.Context, chatID int64, bot *botapi.Bot) error {
@@ -64,9 +128,10 @@ func (r *Updater) UpdateRolesPost(c context.Context, chatID int64, bot *botapi.B
 	err = editCaption(
 		c,
 		bot,
-		"h4venflood",
-		41,
+		r.rolesPostUsername,
+		r.rolesPostID,
 		text,
+		r.rolesPostNavigationURL,
 	)
 
 	if err != nil {
@@ -105,6 +170,7 @@ func (r *Updater) UpdateApplyPost(c context.Context, chatID int64, bot *botapi.B
 		"H4venflood",
 		51,
 		text,
+		defaultNavigationURL,
 	)
 
 	if err != nil {
@@ -147,6 +213,7 @@ func (r *Updater) UpdateRestsPost(c context.Context, chatID int64, bot *botapi.B
 		"h4venflood",
 		45,
 		text,
+		defaultNavigationURL,
 	)
 
 	if err != nil {
@@ -183,6 +250,7 @@ func (r *Updater) UpdateBirthdaysPost(c context.Context, chatID int64, bot *bota
 		"h4venflood",
 		47,
 		RenderBirthdays(members),
+		defaultNavigationURL,
 	)
 
 	if err != nil {
@@ -199,21 +267,30 @@ func editCaption(
 	username string,
 	msgID int,
 	text string,
+	navigationURL string,
 ) error {
+	opts := []botapi.SendOption{
+		botapi.WithParseMode(botapi.ParseModeHTML),
+		botapi.DisableWebPagePreview(),
+	}
+
+	rows := make([][]botapi.InlineKeyboardButton, 0, 1)
+
+	if navigationURL != "" {
+		rows = append(rows, botapi.InlineRow(
+			botapi.InlineButtonURL("☍ к навигации", navigationURL),
+		))
+	}
+
+	// Пустая клавиатура явно удаляет кнопки у поста.
+	opts = append(opts, botapi.WithReplyMarkup(botapi.InlineKeyboard(rows...)))
+
 	_, err := bot.EditMessageCaption(
 		ctx,
 		botapi.Username(username),
 		msgID,
 		text,
-		botapi.WithParseMode(botapi.ParseModeHTML),
-		botapi.DisableWebPagePreview(),
-		botapi.WithReplyMarkup(
-			botapi.InlineKeyboard(
-				botapi.InlineRow(
-					botapi.InlineButtonURL("☍ к навигации", "https://t.me/h4venflood/34"),
-				),
-			),
-		),
+		opts...,
 	)
 
 	if err != nil && strings.Contains(err.Error(), "message is not modified") {

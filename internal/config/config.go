@@ -27,6 +27,7 @@ type Config struct {
 	Application2ChatID   int64  `env:"APPLICATION2_CHAT_ID"`
 	Target2ChatID        int64  `env:"TARGET2_CHAT_ID"`
 	Target2ChatLink      string `env:"TARGET2_CHAT_LINK"`
+	Target2RolesPostLink string `env:"TARGET2_ROLES_POST_LINK" envDefault:"https://t.me/gummyfl00D/5"`
 
 	WeatherAPIKey string `env:"WEATHER_API_KEY"`
 }
