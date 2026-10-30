@@ -282,8 +282,9 @@ func editCaption(
 		))
 	}
 
-	// Пустая клавиатура явно удаляет кнопки у поста.
-	opts = append(opts, botapi.WithReplyMarkup(botapi.InlineKeyboard(rows...)))
+	if len(rows) != 0 {
+		opts = append(opts, botapi.WithReplyMarkup(botapi.InlineKeyboard(rows...)))
+	}
 
 	_, err := bot.EditMessageCaption(
 		ctx,
