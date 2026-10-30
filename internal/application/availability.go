@@ -111,14 +111,31 @@ func (h *Handler) regionMarkup(c *botapi.Context) (*botapi.InlineKeyboardMarkup,
 		return nil, err
 	}
 
-	availability, err := h.loadAvailability(c)
+	reserve, err := h.isReserveFlow(c)
 	if err != nil {
 		return nil, err
+	}
+
+	var availability roleAvailability
+
+	if !reserve {
+		availability, err = h.loadAvailability(c)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	visible := make([]roles.Category, 0, len(fandom.Categories))
 
 	for _, category := range fandom.Categories {
+		if reserve {
+			if len(category.Roles) > 0 {
+				visible = append(visible, category)
+			}
+
+			continue
+		}
+
 		if len(availability.filter(category.Roles)) == 0 {
 			continue
 		}
@@ -153,14 +170,23 @@ func (h *Handler) refreshRoleKeyboard(c *botapi.Context, categoryID int64) error
 		return h.editRegionPrompt(c, cq.Message.Chat.ID, cq.Message.MessageID)
 	}
 
-	available, err := h.availableRoles(c, category.Roles)
+	reserve, err := h.isReserveFlow(c)
 	if err != nil {
 		return err
 	}
 
+	available := category.Roles
+
+	if !reserve {
+		available, err = h.availableRoles(c, category.Roles)
+		if err != nil {
+			return err
+		}
+	}
+
 	text := "Выбрать роль"
 
-	if len(available) == 0 {
+	if !reserve && len(available) == 0 {
 		text = "В этом регионе нет свободных ролей"
 	}
 
@@ -198,6 +224,15 @@ func (h *Handler) availableRoles(c *botapi.Context, candidates []roles.Role) ([]
 	}
 
 	return availability.filter(candidates), nil
+}
+
+func (h *Handler) isReserveFlow(c *botapi.Context) (bool, error) {
+	sess, ok, err := h.appFSM.Get(c)
+	if err != nil {
+		return false, fmt.Errorf("get application fsm: %w", err)
+	}
+
+	return ok && sess.Data.isReserve(), nil
 }
 
 type roleAvailability struct {
@@ -247,6 +282,12 @@ func (h *Handler) loadAvailability(c *botapi.Context) (roleAvailability, error) 
 	}
 
 	return availability, nil
+}
+
+func (a roleAvailability) isReserved(role roles.Role) bool {
+	_, ok := a.reservedIDs[role.ID]
+
+	return ok
 }
 
 func (a roleAvailability) filter(candidates []roles.Role) []roles.Role {

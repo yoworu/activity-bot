@@ -215,16 +215,20 @@ func (h *Handler) SelectRegion(c *botapi.Context) error {
 		)
 	}
 
-	available, err := h.availableRoles(c, category.Roles)
-	if err != nil {
-		return err
-	}
-
 	kind := KindJoin
 	if sess, ok, err := h.appFSM.Get(c); err != nil {
 		return err
 	} else if ok {
 		kind = sess.Data.Kind
+	}
+
+	available := category.Roles
+
+	if kind != KindReserve {
+		available, err = h.availableRoles(c, category.Roles)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := h.appFSM.Enter(
@@ -240,7 +244,7 @@ func (h *Handler) SelectRegion(c *botapi.Context) error {
 
 	text := "Выберите роль"
 
-	if len(available) == 0 {
+	if kind != KindReserve && len(available) == 0 {
 		text = "В этом регионе нет свободных ролей"
 	}
 
@@ -296,16 +300,32 @@ func (h *Handler) SelectRole(c *botapi.Context) error {
 		)
 	}
 
-	available, err := h.availableRoles(c, []roles.Role{foundRole})
-	if err != nil {
-		return err
-	}
-	if len(available) == 0 {
-		_ = c.AnswerCallback(
-			botapi.WithCallbackText("Эта роль уже занята или забронирована"),
-		)
+	if sess.Data.isReserve() {
+		availability, err := h.loadAvailability(c)
+		if err != nil {
+			return err
+		}
 
-		return h.refreshRoleKeyboard(c, sess.Data.CategoryID)
+		if availability.isReserved(foundRole) {
+			_ = c.AnswerCallback(
+				botapi.WithCallbackText("Эта роль уже забронирована"),
+			)
+
+			return h.refreshRoleKeyboard(c, sess.Data.CategoryID)
+		}
+	} else {
+		available, err := h.availableRoles(c, []roles.Role{foundRole})
+		if err != nil {
+			return err
+		}
+
+		if len(available) == 0 {
+			_ = c.AnswerCallback(
+				botapi.WithCallbackText("Эта роль уже занята или забронирована"),
+			)
+
+			return h.refreshRoleKeyboard(c, sess.Data.CategoryID)
+		}
 	}
 
 	if err := h.appFSM.Enter(
@@ -831,13 +851,13 @@ func (h *Handler) Accept(c *botapi.Context) error {
 func (h *Handler) acceptReservation(c *botapi.Context, application *Application) error {
 	cq := c.Update.CallbackQuery
 
-	available, err := h.availableRoles(c, []roles.Role{application.Role})
+	availability, err := h.loadAvailability(c)
 	if err != nil {
 		return err
 	}
-	if len(available) == 0 {
+	if availability.isReserved(application.Role) {
 		return c.AnswerCallback(
-			botapi.WithCallbackText("Эта роль уже занята или забронирована"),
+			botapi.WithCallbackText("Эта роль уже забронирована"),
 		)
 	}
 
