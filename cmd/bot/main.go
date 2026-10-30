@@ -2,6 +2,7 @@ package main
 
 import (
 	"activity-bot/internal/application"
+	"activity-bot/internal/application2"
 	"activity-bot/internal/ban"
 	"activity-bot/internal/crocodile"
 	redis2 "activity-bot/internal/db/redis"
@@ -185,6 +186,29 @@ func main() {
 						infoUpdater,
 						userRepository,
 						chatMemberService,
+						rolesRepository,
+					)
+				},
+			)
+		})
+	}
+
+	if cfg.Application2BotToken != "" {
+		wg.Go(func() {
+			runWithRestart(
+				ctx,
+				log,
+				cfg.Application2BotToken[:8],
+				func() error {
+					return runApplication2Bot(
+						ctx,
+						log,
+						cfg,
+						redisClient,
+						translator,
+						userRepository,
+						chatMemberService,
+						chatService,
 						rolesRepository,
 					)
 				},
@@ -631,6 +655,192 @@ func runApplicationBot(
 	)
 
 	botLog.Info("Starting application bot listener")
+
+	return bot.Run(ctx)
+}
+
+func runApplication2Bot(
+	ctx context.Context,
+	log *zap.Logger,
+	cfg config.Config,
+	redisClient *redis.Client,
+	translator *i18n.Translator,
+	userRepository user.Repository,
+	chatMemberService *chatmember.Service,
+	chatService *chat.Service,
+	rolesRepository roles.Repository,
+) error {
+	botKey := cfg.Application2BotToken[:8]
+	botLog := log.With(
+		zap.String("bot_key", botKey),
+		zap.String("bot", "application2"),
+	)
+
+	sessionsDir := filepath.Join(cfg.StoragePath, "sessions")
+	if err := os.MkdirAll(sessionsDir, 0750); err != nil {
+		return fmt.Errorf("create sessions dir: %w", err)
+	}
+
+	storePath := filepath.Join(
+		sessionsDir,
+		fmt.Sprintf("application2_%s.bbolt", botKey),
+	)
+
+	store, err := storage.Open(storePath)
+	if err != nil {
+		return fmt.Errorf("open storage: %w", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	appFSM := fsm.NewRedisFSM[
+		application2.State,
+		application2.StateData,
+	](
+		redisClient,
+		fmt.Sprintf("fsm:%s:app2:", botKey),
+		24*time.Hour,
+		application2.StateIdle,
+		fsm.WithStrategy[
+			application2.State,
+			application2.StateData,
+		](fsm.StrategySender),
+	)
+
+	rejectFSM := fsm.NewRedisFSM[
+		application2.RejectState,
+		application2.RejectStateData,
+	](
+		redisClient,
+		fmt.Sprintf("fsm:%s:app2:reject:", botKey),
+		24*time.Hour,
+		application2.RejectStateIdle,
+	)
+
+	summonFSM := fsm.NewRedisFSM[
+		summon.State,
+		summon.StateData,
+	](
+		redisClient,
+		fmt.Sprintf("fsm:%s:summon:", botKey),
+		5*time.Hour,
+		summon.StateIdle,
+	)
+
+	var bot *botapi.Bot
+
+	bot, err = botapi.New(cfg.Application2BotToken, botapi.Options{
+		AppID:   cfg.AppID,
+		AppHash: cfg.AppHash,
+		Logger:  logzap.New(botLog),
+		Storage: store,
+		OnStart: func(ctx context.Context) {
+			botLog.Info("Application2 bot started")
+		},
+		FloodWait: true,
+	})
+	if err != nil {
+		return fmt.Errorf("create application2 bot: %w", err)
+	}
+
+	bot.UseOuter(
+		middleware.IgnoreChannelsMiddleware(),
+		middleware.UserMiddleware(userRepository),
+	)
+
+	repository := application2.NewRepository(redisClient)
+
+	appHandler := application2.NewHandler(
+		appFSM,
+		rejectFSM,
+		chatMemberService,
+		repository,
+		rolesRepository,
+		cfg.Target2ChatID,
+		cfg.Application2ChatID,
+		cfg.Target2ChatLink,
+	)
+
+	summonHandler := summon.NewHandler(
+		chatService,
+		chatMemberService,
+		summonFSM,
+	)
+
+	application2.NewJoinHandler(
+		bot,
+		translator,
+		chatMemberService,
+		userRepository,
+		repository,
+		summonHandler,
+	).Attach()
+
+	bot.OnCommand(
+		"start",
+		"Запустить бота",
+		appHandler.Start,
+		botapi.ChatTypeIs(botapi.ChatTypePrivate),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.StartCallback,
+		botapi.CallbackData("app2:new"),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.ShowRegions,
+		botapi.CallbackData("app2:regions"),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.SelectRegion,
+		botapi.CallbackPrefix("app2:region:"),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.SelectRole,
+		botapi.CallbackPrefix("app2:role:"),
+		appFSM.State(application2.StateAwaitRole),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.WasInFloods,
+		botapi.CallbackPrefix("app2:flood:"),
+		appFSM.State(application2.StateAwaitWasInFloods),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.Accept,
+		botapi.CallbackPrefix("app2:accept:"),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.Reject,
+		botapi.CallbackPrefix("app2:reject:"),
+	)
+
+	bot.OnMessage(
+		appHandler.Atmosphere,
+		appFSM.State(application2.StateAwaitAtmosphere),
+		botapi.HasText(),
+		botapi.ChatTypeIs(botapi.ChatTypePrivate),
+	)
+
+	bot.OnMessage(
+		appHandler.LeaveReason,
+		appFSM.State(application2.StateAwaitLeaveReason),
+		botapi.HasText(),
+		botapi.ChatTypeIs(botapi.ChatTypePrivate),
+	)
+
+	bot.OnMessage(
+		appHandler.RejectMessage,
+		rejectFSM.State(application2.RejectStateAwaitReason),
+		botapi.HasText(),
+		botapi.Not(botapi.ChatTypeIs(botapi.ChatTypePrivate)),
+	)
+
+	botLog.Info("Starting application2 bot listener")
 
 	return bot.Run(ctx)
 }
