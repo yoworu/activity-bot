@@ -406,6 +406,7 @@ func runBotInstance(
 		messageRepository,
 		banRepository,
 		summonH,
+		time.Now(),
 	)
 
 	register.Attach(bot, registry, permissions, rules, rpRepository)
@@ -462,8 +463,10 @@ func registerMiddlewares(
 	messageRepository message.Repository,
 	banRepository ban.Repository,
 	summonH *summon.Handler,
+	startedAt time.Time,
 ) {
 	bot.UseOuter(
+		middleware.StartupFilterMiddleware(startedAt),
 		middleware.IgnoreChannelsMiddleware(),
 		middleware.ChatMiddleware(chatRepository, pmSessionRepository),
 		middleware.LocalizationMiddleware(translator),
