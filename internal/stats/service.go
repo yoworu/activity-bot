@@ -66,6 +66,10 @@ func (s *Service) GetChatStats(ctx context.Context, chatID int64, fromDate, toDa
 		return CalculatedStats{}, fmt.Errorf("service norms: %w", err)
 	}
 
+	slices.SortFunc(norms, func(a, b norm.Norm) int {
+		return cmp.Compare(a.Value, b.Value)
+	})
+
 	chatStats, err := s.statsRepo.ChatStats(ctx, chatID, fromDate, toDate)
 	if err != nil {
 		return CalculatedStats{}, fmt.Errorf("service chat stats: %w", err)
@@ -77,7 +81,6 @@ func (s *Service) GetChatStats(ctx context.Context, chatID int64, fromDate, toDa
 
 	for _, stat := range chatStats {
 		statsByUserID[stat.ChatMember.User.ID] = stat.MessagesCount
-
 		totalMessages += stat.MessagesCount
 	}
 
@@ -96,7 +99,7 @@ func (s *Service) GetChatStats(ctx context.Context, chatID int64, fromDate, toDa
 
 	for _, m := range chatMembers {
 		switch {
-		case m.IsResting(now):
+		case m.IsResting(now) || restEndedInPeriod(m, fromDate, toDate):
 			restMembers = append(restMembers, m)
 		case m.IsNewbie(now, newbieDays):
 			newbieMembers = append(newbieMembers, m)
@@ -139,6 +142,7 @@ func (s *Service) GetChatStats(ctx context.Context, chatID int64, fromDate, toDa
 	}
 
 	normMap := make(map[int64]*CalculatedNormResult)
+
 	for _, n := range norms {
 		normMap[n.ID] = &CalculatedNormResult{
 			NormID:   n.ID,
@@ -157,29 +161,19 @@ func (s *Service) GetChatStats(ctx context.Context, chatID int64, fromDate, toDa
 		}
 
 		assignedNorms := userNorms[userID]
-
-		if len(assignedNorms) > 0 {
-			for _, n := range assignedNorms {
-				r := normMap[n.ID]
-
-				if messages >= int64(n.Value) {
-					r.Passed = append(r.Passed, uRes)
-				} else {
-					r.Failed = append(r.Failed, uRes)
-				}
-			}
-
-			continue
+		if len(assignedNorms) == 0 {
+			assignedNorms = commonNorms
 		}
 
-		for _, n := range commonNorms {
+		for _, n := range assignedNorms {
 			r := normMap[n.ID]
 
-			if messages >= int64(n.Value) {
-				r.Passed = append(r.Passed, uRes)
-			} else {
+			if messages < int64(n.Value) {
 				r.Failed = append(r.Failed, uRes)
+				break
 			}
+
+			r.Passed = append(r.Passed, uRes)
 		}
 	}
 
@@ -193,6 +187,12 @@ func (s *Service) GetChatStats(ctx context.Context, chatID int64, fromDate, toDa
 	}
 
 	return res, nil
+}
+
+func restEndedInPeriod(m chatmember.ChatMember, fromDate, toDate time.Time) bool {
+	return !m.RestUntil.IsZero() &&
+		!m.RestUntil.Before(fromDate) &&
+		!m.RestUntil.After(toDate)
 }
 
 func sortResults(users []UserResult) {
