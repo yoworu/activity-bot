@@ -18,6 +18,8 @@ const (
 	callbackAcceptPrefix = "app2:accept:"
 	callbackRejectPrefix = "app2:reject:"
 	callbackNew          = "app2:new"
+	callbackBack         = "app2:back"
+	callbackCancel       = "app2:cancel"
 )
 
 func categoryKeyboard(categories []roles.Category) *botapi.InlineKeyboardMarkup {
@@ -42,7 +44,15 @@ func categoryKeyboard(categories []roles.Category) *botapi.InlineKeyboardMarkup 
 		buttons = append(buttons, data)
 	}
 
-	return keyboardRows(buttons, 2)
+	markup := keyboardRows(buttons, 2)
+	markup.InlineKeyboard = append(
+		markup.InlineKeyboard,
+		[]botapi.InlineKeyboardButton{
+			botapi.InlineButtonData("Отмена", callbackCancel),
+		},
+	)
+
+	return markup
 }
 
 func roleKeyboard(available []roles.Role) *botapi.InlineKeyboardMarkup {
@@ -71,7 +81,8 @@ func roleKeyboard(available []roles.Role) *botapi.InlineKeyboardMarkup {
 	markup.InlineKeyboard = append(
 		markup.InlineKeyboard,
 		[]botapi.InlineKeyboardButton{
-			botapi.InlineButtonData("« Выбрать регион", callbackRegions),
+			botapi.InlineButtonData("« Назад", callbackRegions),
+			botapi.InlineButtonData("Отмена", callbackCancel),
 		},
 	)
 
@@ -83,6 +94,19 @@ func floodsKeyboard() *botapi.InlineKeyboardMarkup {
 		botapi.InlineRow(
 			botapi.InlineButtonData("Да", callbackFloodYes),
 			botapi.InlineButtonData("Нет", callbackFloodNo),
+		),
+		botapi.InlineRow(
+			botapi.InlineButtonData("« Назад", callbackBack),
+			botapi.InlineButtonData("Отмена", callbackCancel),
+		),
+	)
+}
+
+func navigationKeyboard() *botapi.InlineKeyboardMarkup {
+	return botapi.InlineKeyboard(
+		botapi.InlineRow(
+			botapi.InlineButtonData("« Назад", callbackBack),
+			botapi.InlineButtonData("Отмена", callbackCancel),
 		),
 	)
 }

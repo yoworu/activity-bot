@@ -111,6 +111,151 @@ func (h *Handler) ShowRegions(c *botapi.Context) error {
 	return c.AnswerCallback()
 }
 
+func (h *Handler) Cancel(c *botapi.Context) error {
+	cq := c.Update.CallbackQuery
+	if cq == nil || cq.Message == nil {
+		return nil
+	}
+
+	sess, ok, err := h.appFSM.Get(c)
+	if err != nil {
+		return err
+	}
+	if ok && sess.State == StatePending {
+		return c.AnswerCallback(
+			botapi.WithCallbackText("Заявка уже отправлена на рассмотрение"),
+		)
+	}
+
+	if err := h.appFSM.Clear(c); err != nil {
+		return err
+	}
+
+	if _, err := c.Bot.EditMessageText(
+		c,
+		botapi.ID(cq.Message.Chat.ID),
+		cq.Message.MessageID,
+		"Заявка отменена.\n\nВы можете отправить новую заявку в любой момент.",
+		botapi.WithReplyMarkup(
+			botapi.InlineKeyboard(
+				botapi.InlineRow(
+					botapi.InlineButtonData(
+						"📨 Отправить новую заявку",
+						callbackNew,
+					),
+				),
+			),
+		),
+	); err != nil {
+		return fmt.Errorf("edit cancelled prompt: %w", err)
+	}
+
+	return c.AnswerCallback(
+		botapi.WithCallbackText("Заявка отменена"),
+	)
+}
+
+func (h *Handler) Back(c *botapi.Context) error {
+	cq := c.Update.CallbackQuery
+	if cq == nil || cq.Message == nil {
+		return nil
+	}
+
+	sess, ok, err := h.appFSM.Get(c)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return c.AnswerCallback(
+			botapi.WithCallbackText("Заявка не найдена или устарела"),
+		)
+	}
+
+	switch sess.State {
+	case StateAwaitRole:
+		if sess.Data.CategoryID == 0 {
+			return c.AnswerCallback(
+				botapi.WithCallbackText("Это первый шаг"),
+			)
+		}
+
+		if err := h.appFSM.Enter(c, StateAwaitRole, StateData{}); err != nil {
+			return err
+		}
+
+		if err := h.editRolePrompt(
+			c,
+			cq.Message.Chat.ID,
+			cq.Message.MessageID,
+		); err != nil {
+			return err
+		}
+
+	case StateAwaitAtmosphere:
+		if err := h.appFSM.Enter(c, StateAwaitRole, StateData{
+			CategoryID: sess.Data.CategoryID,
+		}); err != nil {
+			return err
+		}
+
+		if err := h.editRolesPrompt(
+			c,
+			cq.Message.Chat.ID,
+			cq.Message.MessageID,
+			sess.Data.CategoryID,
+		); err != nil {
+			return err
+		}
+
+	case StateAwaitWasInFloods:
+		sess.Data.Atmosphere = ""
+		sess.Data.PromptMessageID = cq.Message.MessageID
+
+		if err := h.appFSM.Enter(c, StateAwaitAtmosphere, sess.Data); err != nil {
+			return err
+		}
+
+		if _, err := c.Bot.EditMessageText(
+			c,
+			botapi.ID(cq.Message.Chat.ID),
+			cq.Message.MessageID,
+			fmt.Sprintf(
+				"Выбрана роль: %s\n\nЧто для вас важно в атмосфере общего чата?",
+				sess.Data.Role.Name,
+			),
+			botapi.WithReplyMarkup(navigationKeyboard()),
+		); err != nil {
+			return fmt.Errorf("edit atmosphere prompt: %w", err)
+		}
+
+	case StateAwaitLeaveReason:
+		sess.Data.WasInFloods = false
+		sess.Data.LeaveReason = ""
+		sess.Data.PromptMessageID = cq.Message.MessageID
+
+		if err := h.appFSM.Enter(c, StateAwaitWasInFloods, sess.Data); err != nil {
+			return err
+		}
+
+		if _, err := c.Bot.EditMessageText(
+			c,
+			botapi.ID(cq.Message.Chat.ID),
+			cq.Message.MessageID,
+			"Бывали ли вы раньше в подобных флудах?",
+			botapi.WithReplyMarkup(floodsKeyboard()),
+		); err != nil {
+			return fmt.Errorf("edit floods prompt: %w", err)
+		}
+
+	default:
+		return c.AnswerCallback(
+			botapi.WithCallbackText("Назад недоступно"),
+		)
+	}
+
+	return c.AnswerCallback()
+}
+
 func (h *Handler) SelectRegion(c *botapi.Context) error {
 	cq := c.Update.CallbackQuery
 	if cq == nil || cq.Message == nil {
@@ -226,8 +371,9 @@ func (h *Handler) SelectRole(c *botapi.Context) error {
 	}
 
 	if err := h.appFSM.Enter(c, StateAwaitAtmosphere, StateData{
-		CategoryID: sess.Data.CategoryID,
-		Role:       foundRole,
+		CategoryID:      sess.Data.CategoryID,
+		Role:            foundRole,
+		PromptMessageID: cq.Message.MessageID,
 	}); err != nil {
 		return err
 	}
@@ -240,6 +386,7 @@ func (h *Handler) SelectRole(c *botapi.Context) error {
 			"Выбрана роль: %s\n\nЧто для вас важно в атмосфере общего чата?",
 			foundRole.Name,
 		),
+		botapi.WithReplyMarkup(navigationKeyboard()),
 	); err != nil {
 		return fmt.Errorf("edit atmosphere prompt: %w", err)
 	}
@@ -269,16 +416,24 @@ func (h *Handler) Atmosphere(c *botapi.Context) error {
 
 	sess.Data.Atmosphere = text
 
-	if err := h.appFSM.Enter(c, StateAwaitWasInFloods, sess.Data); err != nil {
-		return err
+	if messageID := sess.Data.PromptMessageID; messageID != 0 {
+		chatID, _ := c.Chat()
+		_, _ = c.Bot.EditMessageReplyMarkup(c, chatID, messageID, nil)
+
+		sess.Data.PromptMessageID = 0
 	}
 
-	_, err = c.Reply(
+	reply, err := c.Reply(
 		"Бывали ли вы раньше в подобных флудах?",
 		botapi.WithReplyMarkup(floodsKeyboard()),
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	sess.Data.PromptMessageID = reply.MessageID
+
+	return h.appFSM.Enter(c, StateAwaitWasInFloods, sess.Data)
 }
 
 func (h *Handler) WasInFloods(c *botapi.Context) error {
@@ -300,6 +455,7 @@ func (h *Handler) WasInFloods(c *botapi.Context) error {
 	switch cq.Data {
 	case callbackFloodYes:
 		sess.Data.WasInFloods = true
+		sess.Data.PromptMessageID = cq.Message.MessageID
 
 		if err := h.appFSM.Enter(c, StateAwaitLeaveReason, sess.Data); err != nil {
 			return err
@@ -313,6 +469,7 @@ func (h *Handler) WasInFloods(c *botapi.Context) error {
 				"Выбрана роль: %s\n\nЧто стало причиной ухода или дискомфорта?",
 				sess.Data.Role.Name,
 			),
+			botapi.WithReplyMarkup(navigationKeyboard()),
 		); err != nil {
 			return fmt.Errorf("edit leave reason prompt: %w", err)
 		}
@@ -355,7 +512,7 @@ func (h *Handler) LeaveReason(c *botapi.Context) error {
 	sess.Data.WasInFloods = true
 	sess.Data.LeaveReason = text
 
-	return h.submit(c, sess.Data, 0)
+	return h.submit(c, sess.Data, sess.Data.PromptMessageID)
 }
 
 func (h *Handler) submit(
@@ -762,6 +919,20 @@ func (h *Handler) refreshRoleKeyboard(c *botapi.Context, categoryID int64) error
 		return nil
 	}
 
+	return h.editRolesPrompt(
+		c,
+		cq.Message.Chat.ID,
+		cq.Message.MessageID,
+		categoryID,
+	)
+}
+
+func (h *Handler) editRolesPrompt(
+	c *botapi.Context,
+	chatID int64,
+	messageID int,
+	categoryID int64,
+) error {
 	fandom, err := h.loadFandom(c)
 	if err != nil {
 		return err
@@ -777,7 +948,7 @@ func (h *Handler) refreshRoleKeyboard(c *botapi.Context, categoryID int64) error
 	}
 
 	if category == nil {
-		return h.editRolePrompt(c, cq.Message.Chat.ID, cq.Message.MessageID)
+		return h.editRolePrompt(c, chatID, messageID)
 	}
 
 	available, err := h.availableRoles(c, category.Roles)
@@ -793,8 +964,8 @@ func (h *Handler) refreshRoleKeyboard(c *botapi.Context, categoryID int64) error
 
 	_, err = c.Bot.EditMessageText(
 		c,
-		botapi.ID(cq.Message.Chat.ID),
-		cq.Message.MessageID,
+		botapi.ID(chatID),
+		messageID,
 		text,
 		botapi.WithReplyMarkup(roleKeyboard(available)),
 	)

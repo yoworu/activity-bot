@@ -783,6 +783,16 @@ func runApplication2Bot(
 	)
 
 	bot.OnCallbackQuery(
+		appHandler.Back,
+		botapi.CallbackData("app2:back"),
+	)
+
+	bot.OnCallbackQuery(
+		appHandler.Cancel,
+		botapi.CallbackData("app2:cancel"),
+	)
+
+	bot.OnCallbackQuery(
 		appHandler.SelectRegion,
 		botapi.CallbackPrefix("app2:region:"),
 	)

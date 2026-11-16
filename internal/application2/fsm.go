@@ -16,11 +16,12 @@ const (
 )
 
 type StateData struct {
-	CategoryID  int64
-	Role        roles.Role
-	Atmosphere  string
-	WasInFloods bool
-	LeaveReason string
+	CategoryID      int64
+	Role            roles.Role
+	Atmosphere      string
+	WasInFloods     bool
+	LeaveReason     string
+	PromptMessageID int
 }
 
 type RejectState string

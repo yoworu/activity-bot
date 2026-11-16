@@ -9,7 +9,6 @@ import (
 	"activity-bot/internal/summon"
 	"activity-bot/internal/user"
 	"context"
-	"errors"
 
 	"github.com/gotd/botapi"
 )
@@ -61,10 +60,10 @@ func (h *Handler) updateRolesPosts(ctx context.Context, chatID int64) error {
 	err := h.updater.UpdateRolesPost(ctx, chatID, h.bot)
 
 	if h.application2Updater != nil {
-		err = errors.Join(
-			err,
-			h.application2Updater.UpdateRolesPost(ctx, chatID, h.bot),
-		)
+		//err = errors.Join(
+		//	err,
+		//	h.application2Updater.UpdateRolesPost(ctx, chatID, h.bot),
+		//)
 	}
 
 	return err
