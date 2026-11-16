@@ -7,6 +7,13 @@ import (
 	"github.com/gotd/botapi"
 )
 
+// extraBotUsernames contains additional bot usernames accepted in the
+// /command@username form. Telegram does not always expose every bot username
+// through Self(), so the main one is duplicated here.
+var extraBotUsernames = map[string]struct{}{
+	"krisapp": {},
+}
+
 func Command(name string, prefixes []string, aliases []string) botapi.Predicate {
 	commands := make([]string, 0, len(aliases)+1)
 
@@ -82,6 +89,10 @@ func matchCommandAndGetLen(trimmedText, command, botUsername string) (int, bool)
 			if strings.HasPrefix(word, cmdWord+"@") {
 				username := strings.TrimPrefix(word, cmdWord+"@")
 				if username == botUsername {
+					continue
+				}
+
+				if _, ok := extraBotUsernames[username]; ok {
 					continue
 				}
 			}
