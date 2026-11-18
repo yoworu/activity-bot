@@ -35,6 +35,9 @@ func (h *Handler) SetRole(c *botapi.Context) error {
 		return nil
 	}
 
+	roleName, _, _ := strings.Cut(newRole, "|")
+	roleName = strings.TrimSpace(roleName)
+
 	if err := h.chatMemberService.UpdateTag(c, ch.ID, cm.ID(), newRole); err != nil {
 		return fmt.Errorf("set role upd tag: %w", err)
 	}
@@ -54,7 +57,6 @@ func (h *Handler) SetRole(c *botapi.Context) error {
 
 		if tgErr, ok := errors.AsType[*tgerr.Error](err); ok && tgErr.Type == "CHAT_ADMIN_REQUIRED" {
 			_, err = c.Reply(loc.T(i18n.Cmd.Moderation.SetRole.NoRights, nil))
-
 			return err
 		}
 
@@ -72,7 +74,7 @@ func (h *Handler) SetRole(c *botapi.Context) error {
 
 	for _, category := range fandom.Categories {
 		for _, role := range category.Roles {
-			if !strings.EqualFold(strings.TrimSpace(role.Name), strings.TrimSpace(newRole)) {
+			if !strings.EqualFold(strings.TrimSpace(role.Name), roleName) {
 				continue
 			}
 
