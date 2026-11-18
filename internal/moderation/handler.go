@@ -8,6 +8,7 @@ import (
 	"activity-bot/internal/info"
 	"activity-bot/internal/option"
 	"activity-bot/internal/permission"
+	"activity-bot/internal/roles"
 	"activity-bot/internal/rule"
 	"fmt"
 
@@ -20,16 +21,19 @@ type Handler struct {
 	service           *Service
 	chatMemberService *chatmember.Service
 	roleUpdater       *info.Updater
+	rolesRepository   roles.Repository
 }
 
 func NewHandler(
 	service *Service,
 	cms *chatmember.Service,
+	rolesRepository roles.Repository,
 	roleUpdater *info.Updater,
 ) *Handler {
 	return &Handler{
 		service:           service,
 		chatMemberService: cms,
+		rolesRepository:   rolesRepository,
 		roleUpdater:       roleUpdater,
 	}
 }

@@ -357,7 +357,7 @@ func runBotInstance(
 		norm.NewHandler(normRepository),
 		stats.NewHandler(statsService, normRepository, rewardRepository, summonH, statsFSM),
 		rest.NewHandler(restService, chatMemberService, infoUpdater),
-		moderation.NewHandler(moderationService, chatMemberService, infoUpdater),
+		moderation.NewHandler(moderationService, chatMemberService, rolesRepository, infoUpdater),
 		permissionHandler.NewHandler(registry, permissionRepository),
 		manage.NewHandler(chatService, pmSessionRepository),
 		userHandler.NewHandler(userRepository),

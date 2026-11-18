@@ -20,8 +20,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/gotd/botapi"
 	"github.com/gotd/log"
+
+	"github.com/gotd/botapi"
 )
 
 const CategoryChatMember command.Category = "chat_member"
@@ -126,9 +127,14 @@ func (h *Handler) Actions() []*command.Action {
 
 func (h *Handler) SetEmoji(c *botapi.Context) error {
 	msg := cctx.MustArgsMessage(c)
+	text := strings.TrimSpace(msg.OriginalTextHTML())
 
-	emojis := emoji.Extract(msg.OriginalTextHTML())
+	emojis := emoji.Extract(text)
 	if len(emojis) == 0 || len(emojis) > 3 {
+		return nil
+	}
+
+	if strings.Join(emojis, "") != text {
 		return nil
 	}
 

@@ -40,6 +40,7 @@ func (h *Handler) SetRole(c *botapi.Context) error {
 	}
 
 	loc := cctx.MustLocalizer(c)
+
 	if err := c.Bot.SetChatMemberTag(c, botapi.ID(ch.ID), cm.ID(), newRole); err != nil {
 		if tgErr, ok := errors.AsType[*tgerr.Error](err); ok && tgErr.Type == "CHAT_CREATOR_REQUIRED" {
 			if cm.IsOwner() {
@@ -60,6 +61,31 @@ func (h *Handler) SetRole(c *botapi.Context) error {
 		return fmt.Errorf("set role set tag: %w", err)
 	}
 
+	fandom, err := h.rolesRepository.GetRoleTemplate(
+		c,
+		ch.ID,
+		"Genshin Impact",
+	)
+	if err != nil {
+		return fmt.Errorf("load genshin roles: %w", err)
+	}
+
+	for _, category := range fandom.Categories {
+		for _, role := range category.Roles {
+			if !strings.EqualFold(strings.TrimSpace(role.Name), strings.TrimSpace(newRole)) {
+				continue
+			}
+
+			if role.Emoji != "" {
+				if err := h.chatMemberService.SetEmoji(c, ch.ID, cm.ID(), role.Emoji); err != nil {
+					return fmt.Errorf("set role emoji: %w", err)
+				}
+			}
+
+			break
+		}
+	}
+
 	if _, err := c.Reply(
 		loc.T(i18n.Cmd.Moderation.SetRole.Set, i18n.CmdModerationSetRoleSetData{
 			User:    tghtml.MemberMention(loc, ch, cm),
@@ -75,6 +101,7 @@ func (h *Handler) SetRole(c *botapi.Context) error {
 	if err := h.roleUpdater.UpdateRolesPost(c, int64(chatID.(botapi.ChatIDInt)), c.Bot); err != nil {
 		return fmt.Errorf("set role: %w", err)
 	}
+
 	return nil
 }
 
