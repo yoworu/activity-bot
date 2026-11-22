@@ -57,7 +57,7 @@ func (h *Handler) Actions() []*command.Action {
 			CategoryChatMember,
 			option.WithAliases("значок", "чат эмодзи"),
 			option.IgnorePermissionCheck(),
-			option.WithRules(rule.User().Optional(), rule.Text()),
+			option.WithRules(rule.User(), rule.Text()),
 			option.WithPermission(permission.StatusModerator),
 		),
 		action.NewCommand(
@@ -131,10 +131,6 @@ func (h *Handler) SetEmoji(c *botapi.Context) error {
 
 	emojis := emoji.Extract(text)
 	if len(emojis) == 0 || len(emojis) > 3 {
-		return nil
-	}
-
-	if strings.Join(emojis, "") != text {
 		return nil
 	}
 
