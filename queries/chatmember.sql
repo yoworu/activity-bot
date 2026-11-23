@@ -128,6 +128,7 @@ FROM chat_members cm
 WHERE cm.chat_id = $1
   AND is_bot = false
   AND cm.status >= $2
+  AND cm.left_at IS NULL
 ORDER BY cm.status DESC;
 
 -- name: SetChatMemberDescription :exec
