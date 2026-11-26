@@ -545,6 +545,7 @@ SELECT f.id          AS fandom_id,
        rc.name       AS category_name,
        rc.created_at AS category_created_at,
        rc.position   AS category_position,
+       rc.emoji      AS category_emoji,
 
        r.id          AS role_id,
        r.category_id AS role_category_id,
@@ -578,6 +579,7 @@ type ListRoleTemplatesRow struct {
 	CategoryName      string             `db:"category_name" json:"categoryName"`
 	CategoryCreatedAt pgtype.Timestamptz `db:"category_created_at" json:"categoryCreatedAt"`
 	CategoryPosition  int32              `db:"category_position" json:"categoryPosition"`
+	CategoryEmoji     pgtype.Text        `db:"category_emoji" json:"categoryEmoji"`
 	RoleID            int64              `db:"role_id" json:"roleId"`
 	RoleCategoryID    int64              `db:"role_category_id" json:"roleCategoryId"`
 	RoleName          string             `db:"role_name" json:"roleName"`
@@ -606,6 +608,7 @@ func (q *Queries) ListRoleTemplates(ctx context.Context, chatID int64) ([]ListRo
 			&i.CategoryName,
 			&i.CategoryCreatedAt,
 			&i.CategoryPosition,
+			&i.CategoryEmoji,
 			&i.RoleID,
 			&i.RoleCategoryID,
 			&i.RoleName,

@@ -55,6 +55,13 @@ func (h *Handler) Actions() []*command.Action {
 			option.WithRules(rule.Text()),
 			option.WithPermission(permission.StatusAdmin),
 		),
+		action.NewCommand(
+			"addfandom",
+			h.AddFandom,
+			i18n.Cmd.Roles.AddFandom.Desc,
+			RolesCategory,
+			option.WithAliases("показать роли"),
+		),
 	}
 }
 
@@ -125,6 +132,42 @@ func (h *Handler) ImportGenshin(c *botapi.Context) error {
 
 	_, err := c.Reply(loc.T(i18n.Cmd.Roles.Genshin.Success, nil))
 	return err
+}
+
+func (h *Handler) AddFandom(c *botapi.Context) error {
+	ch := cctx.MustChat(c)
+	chatID, _ := c.Chat()
+
+	fandoms, err := h.repo.ListRoleTemplates(c, ch.ID)
+	if err != nil {
+		return fmt.Errorf("list role templates: %w", err)
+	}
+
+	if len(fandoms) == 0 {
+		loc := cctx.MustLocalizer(c)
+
+		_, err = c.Reply(loc.T(i18n.Cmd.Roles.AddFandom.Empty, nil))
+		return err
+	}
+
+	opts := []botapi.SendOption{
+		botapi.WithParseMode(botapi.ParseModeHTML),
+		botapi.DisableWebPagePreview(),
+	}
+
+	for i, text := range RenderFandomTemplate(fandoms) {
+		if i == 0 {
+			_, err = c.Reply(text, opts...)
+		} else {
+			_, err = c.Bot.SendMessage(c, chatID, text, opts...)
+		}
+
+		if err != nil {
+			return fmt.Errorf("send fandom template: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func GenshinRoles() []Category {

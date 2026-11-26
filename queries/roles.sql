@@ -186,6 +186,7 @@ SELECT f.id          AS fandom_id,
        rc.name       AS category_name,
        rc.created_at AS category_created_at,
        rc.position   AS category_position,
+       rc.emoji      AS category_emoji,
 
        r.id          AS role_id,
        r.category_id AS role_category_id,

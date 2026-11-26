@@ -454,6 +454,7 @@ func (r *Repository) ListRoleTemplates(
 				roles.Category{
 					ID:    row.CategoryID,
 					Name:  row.CategoryName,
+					Emoji: row.CategoryEmoji.String,
 					Roles: []roles.Role{},
 				},
 			)

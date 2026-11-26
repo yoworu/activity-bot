@@ -30,6 +30,7 @@ var (
 		Permission MessageID
 		Rest       MessageID
 		Rewards    MessageID
+		Roles      MessageID
 		Rp         MessageID
 		Stats      MessageID
 		Summon     MessageID
@@ -46,6 +47,7 @@ var (
 		Permission: "category.permission",
 		Rest:       "category.rest",
 		Rewards:    "category.rewards",
+		Roles:      "category.roles",
 		Rp:         "category.rp",
 		Stats:      "category.stats",
 		Summon:     "category.summon",
@@ -615,6 +617,10 @@ var (
 			Success MessageID
 		}
 		Roles struct {
+			AddFandom struct {
+				Desc  MessageID
+				Empty MessageID
+			}
 			Free struct {
 				Desc    MessageID
 				Success MessageID
@@ -2161,6 +2167,10 @@ var (
 			Success: "cmd.reward.success",
 		},
 		Roles: struct {
+			AddFandom struct {
+				Desc  MessageID
+				Empty MessageID
+			}
 			Free struct {
 				Desc    MessageID
 				Success MessageID
@@ -2174,6 +2184,13 @@ var (
 				Success MessageID
 			}
 		}{
+			AddFandom: struct {
+				Desc  MessageID
+				Empty MessageID
+			}{
+				Desc:  "cmd.roles.add_fandom.desc",
+				Empty: "cmd.roles.add_fandom.empty",
+			},
 			Free: struct {
 				Desc    MessageID
 				Success MessageID

@@ -1,3 +1,7 @@
+[cmd.roles.add_fandom]
+desc = "Показать фандомы, категории и роли в формате /addfandom"
+empty = "В этом чате ещё нет ролей"
+
 [cmd.roles.genshin]
 desc = "Установить шаблон ролей Genshin Impact"
 success = "Установлен шаблон ролей Genshin Impact"
