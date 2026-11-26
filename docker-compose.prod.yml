@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: docker/prod/Dockerfile
+      dockerfile: docker/prod/Dockerfile #
     restart: unless-stopped
     depends_on:
       db:
